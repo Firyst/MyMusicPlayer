@@ -3,22 +3,17 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QLa
     QAbstractScrollArea, QVBoxLayout, QTextBrowser, QHBoxLayout
 from PyQt5.QtGui import QIcon, QPixmap, QFontMetrics, QFont, QTextCursor
 import sys
-from main import get_scrappers
+from main import get_scrappers, duration_to_string
 from threading import Thread
 
 test_data = []
-
-def upd2(value):
-    ex.add_search_result(value)
-
-
 result_cache = []
+
 
 def run_scrapper(req, scrapper_func, button):
     print('running search with ', scrapper_func)
     global result_cache
-    result = scrapper_func(req)
-    for r in result:
+    for r in scrapper_func(req):
         result_cache.append(r)
         button.click()
 
@@ -31,11 +26,23 @@ class MyWindow(QMainWindow):
 
         self.set_search_label('Nothing here yet...')
         self.cos.clicked.connect(self.upd)
+        st = '''
+        QWidget
+        { 
+            background-color: yellow; 
+        }
+        QWidget:hover {
+            background-color: red; 
+        }
+        '''
+        self.test_widget.setStyleSheet(st)
+        self.widget2.setStyleSheet(st)
 
     def upd(self):
-        t = result_cache.pop()
-        print(t)
-        self.add_search_result(t[0])
+        while len(result_cache):
+            t = result_cache.pop(0)
+            # print(t)
+            self.add_search_result(t)
 
     def start_search(self):
         self.set_search_label('Searching...')
@@ -50,18 +57,50 @@ class MyWindow(QMainWindow):
         lbl.setAlignment(QtCore.Qt.AlignCenter)
         self.search_scroll_area.setWidget(lbl)
 
-    def add_search_result(self, show_name):
+    def add_search_result(self, track):
         widg = self.search_scroll_area.widget()
+
         if isinstance(widg, QLabel):
+
             new_widget = QWidget()
+            new_widget.setAutoFillBackground(True)
             new_layout = QVBoxLayout()
 
             new_layout.setAlignment(QtCore.Qt.AlignTop)
 
             new_widget.setLayout(new_layout)
+
             self.search_scroll_area.setWidget(new_widget)
         widg = self.search_scroll_area.widget()
-        widg.layout().addWidget(QLabel(show_name))
+
+        style = '''
+        QWidget:hover
+        {
+            background-color: rgb(100, 100, 200);
+        }
+        '''
+        label_widget = QWidget()
+        label_layout = QHBoxLayout()
+
+
+        lbl = QLabel(track.get_param('author'))
+        lbl.setWordWrap(False)
+        lbl.setTextFormat(QtCore.Qt.PlainText)
+        label_layout.addWidget(lbl)
+        lbl = QLabel(track.get_param('name'))
+        lbl.setWordWrap(False)
+        lbl.setTextFormat(QtCore.Qt.PlainText)
+        label_layout.addWidget(lbl)
+        lbl = QLabel(duration_to_string(track.get_param('duration')))
+        lbl.setWordWrap(False)
+        lbl.setTextFormat(QtCore.Qt.PlainText)
+        label_layout.addWidget(lbl)
+
+
+        label_widget.setLayout(label_layout)
+        label_widget.setAutoFillBackground(True)
+        label_widget.setStyleSheet(style)
+        widg.layout().addWidget(label_widget)
 
 
 app = QApplication(sys.argv)

@@ -11,13 +11,14 @@ from main import MusicTrack
 # file should be named as you want it to be shown in the app
 
 def get_music_list(search_request):
-    result = []
-    # search by given name
+    # return results by given request
     # you can do whatever you want (get results from web, your own db or even local storage)
-    # write result
-    new_metadata = {'author': 'Track author', 'name': 'Track name', 'duration': 112, 'year': 1999, 'sample_rate': 320}
+
     # create track with id=0 (it will be assigned later automatically)
-    my_track = MusicTrack(0, "file_link", False, new_metadata)
-    result.append(my_track)
-    # list list of MusicTrack objects
-    return result
+
+    for i in range(0):
+        my_track = MusicTrack(0, "file_link", False, author='author', name='name', duration=112, sample_rate=320,
+                              year=1999)
+        yield my_track
+
+    # return list of MusicTrack objects

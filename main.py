@@ -3,9 +3,31 @@ import os
 import hashlib
 from importlib import import_module
 
+
+def string_to_duration(string):
+    times = list(map(int, string.split(':')))[::-1]
+    dur = 0
+    for t in range(len(times)):
+        dur += times[t] * (60 ** t)
+    return dur
+
+
+def duration_to_string(seconds):
+    hours = seconds // 3600
+    seconds %= 3600
+    minutes = seconds // 60
+    seconds %= 60
+    if minutes:
+        if hours:
+            return str(hours) + ':' + str(minutes).rjust(2, '0') + ':' + str(seconds).rjust(2, '0')
+        return str(minutes) + ':' + str(seconds).rjust(2, '0')
+    return '0:' + str(seconds).rjust(2, '0')
+
+
 def generate_unique_key(name):
     hash = hashlib.md5(name.encode())
     print(int(hash.hexdigest(), 16))
+
 
 def get_scrappers():
     # import all available scrappers
@@ -23,18 +45,20 @@ def get_scrappers():
 
 
 class MusicTrack:
-    def __init__(self, track_id, file, is_local, metadata=None):
+    def __init__(self, track_id, file, is_local, **kwargs):
         # is_local=True: file should be DIRECT link to web file
         # is_local=False: filepath + filename
         # metadata=dict()
         self.id = track_id
-        if metadata is None:
-            self.metadata = dict()
-        else:
-            if type(metadata) == dict:
-                self.metadata = metadata
+        self.file = file
+        self.is_local = is_local
+        self.metadata = dict()
+        known_keywords = ['author', 'name', 'duration', 'sample_rate', 'year', ]
+        for kwarg in kwargs:
+            if kwarg in known_keywords:
+                self.metadata[kwarg] = kwargs[kwarg]
             else:
-                raise TypeError('Track metadata should be dict')
+                raise TypeError(f"No such keyword parameter. Available types are:\n{' '.join(known_keywords)}")
 
     def get_param(self, keyword):
         # returns parameter if present, else None
@@ -46,7 +70,4 @@ class MusicTrack:
             self.metadata[kwarg] = kwargs[kwarg]
 
 
-
 # print(get_scrappers())
-generate_unique_key("heou")
-print('474882478560272308151711149012156580409737478144.')
