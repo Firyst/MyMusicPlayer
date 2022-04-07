@@ -5,7 +5,11 @@ from main import MusicTrack, string_to_duration
 
 def get_music_list(search_request):
     # search by given name
-    response = requests.get(f"https://page.ligaudio.ru/mp3/{search_request}")
+    try:
+        response = requests.get(f"https://page.ligaudio.ru/mp3/{search_request}")
+    except requests.exceptions.ConnectionError:
+        print('no connection')
+        return
     if response:
         soup = BeautifulSoup(response.text, features="html.parser")
         found_links = soup.findAll('div', {'itemtype': "http://schema.org/MusicRecording"})

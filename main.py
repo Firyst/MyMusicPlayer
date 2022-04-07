@@ -60,6 +60,9 @@ class MusicTrack:
             else:
                 raise TypeError(f"No such keyword parameter. Available types are:\n{' '.join(known_keywords)}")
 
+    def __getitem__(self, item):
+        return self.metadata[item]
+
     def get_param(self, keyword):
         # returns parameter if present, else None
         return self.metadata.get(keyword, None)
