@@ -44,7 +44,7 @@ def get_files_data(file_links, file_format):
     # gets all files data such as bitrate, length etc.
     for file_index, file_link in enumerate(file_links[:5]):
         filename = f"temp/track{file_index}.{file_format}"
-        track = requests.get(file_link)
+        track = requests.get(file_link[1])
         with open(filename, 'wb') as f:
             f.write(track.content)
 
@@ -54,10 +54,11 @@ def get_files_data(file_links, file_format):
         # urllib.request.urlcleanup()
 
         metadata = audio_metadata.load(filename)
+
         print(metadata)
 
 
 
 links = get_files("Slipknot Devil In I", 'mp3', 'https', '?play')
 print(links)
-# get_files_data(links, 'mp3')
+get_files_data(links, 'mp3')

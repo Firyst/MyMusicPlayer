@@ -21,4 +21,4 @@ def get_music_list(search_request):
                               year=1999)
         yield my_track
 
-    # return list of MusicTrack objects
+    return  # let the program now search is now finished

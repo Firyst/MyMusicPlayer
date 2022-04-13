@@ -79,6 +79,16 @@
          <string>TextLabel</string>
         </property>
        </widget>
+       <widget class="QComboBox" name="comboBox">
+        <property name="geometry">
+         <rect>
+          <x>50</x>
+          <y>270</y>
+          <width>76</width>
+          <height>24</height>
+         </rect>
+        </property>
+       </widget>
       </widget>
       <widget class="QWidget" name="tab_search">
        <attribute name="title">
@@ -121,7 +131,7 @@
                <x>0</x>
                <y>0</y>
                <width>663</width>
-               <height>424</height>
+               <height>441</height>
               </rect>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout"/>

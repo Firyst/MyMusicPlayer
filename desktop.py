@@ -37,22 +37,21 @@ class ResultWidget:
 
         self.author_label = QLabel(track.get_param('author'))
         self.author_label.setWordWrap(False)
-        label_layout.addWidget(self.author_label, 0, 0, 1, 2)
+        label_layout.addWidget(self.author_label, 0, 0, 1, 3)
 
         self.name_label = QLabel(track.get_param('name'))
         self.name_label.setWordWrap(False)
-        label_layout.addWidget(self.name_label, 0, 2, 1, 2)
+        label_layout.addWidget(self.name_label, 0, 3, 1, 3)
 
         self.duration_label = QLabel(duration_to_string(track.get_param('duration')))
         self.duration_label.setWordWrap(False)
-        label_layout.addWidget(self.duration_label, 0, 4, 1, 1)
-
+        label_layout.addWidget(self.duration_label, 0, 6, 1, 1)
 
         label_widget.setLayout(label_layout)
         label_widget.setAutoFillBackground(True)
         label_widget.setStyleSheet(style)
         self.button = QPushButton("Download")
-        label_layout.addWidget(self.button, 0, 5, 1, 1)
+        label_layout.addWidget(self.button, 0, 7, 1, 1)
 
         self.widget = label_widget
         self.track = track
@@ -63,12 +62,13 @@ class ResultWidget:
     def get_widget(self):
         return self.widget
 
-    def truncate(self, metrics, max_width):
-        # resizes labels for the given proportions
+    def truncate(self, max_width, metrics=None):
+        # resize labels for the given proportions
         props = [0.25, 0.25, 0.2]
         labels = [self.author_label, self.name_label, self.duration_label]
-        texts = [self.track['author'], self.track['name'], duration_to_string(self.track['duration'])]
-        metrics = QFontMetrics(self.name_label.font())
+        texts = [self.track['artist'], self.track['title'], duration_to_string(self.track['duration'])]
+        if metrics is None:
+            metrics = QFontMetrics(self.name_label.font())
         for i in range(len(props)):
             size = int(props[i] * max_width)
             text = texts[i]
@@ -78,8 +78,6 @@ class ResultWidget:
                 labels[i].setText(text + '...')
             else:
                 labels[i].setText(text)
-            # labels[i].resize(size, labels[i].height())
-        # self.button.resize(int((1 - sum(props)) * max_width), self.button.height())
 
 
 class MyWindow(QMainWindow):
@@ -108,8 +106,10 @@ class MyWindow(QMainWindow):
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         # truncate text while resizing
-        for result in self.current_results:
-            result.truncate(None, self.search_scroll_area.width())
+        if self.current_results:
+            metrics = QFontMetrics(self.current_results[0].name_label.font())
+            for result in self.current_results:
+                result.truncate(self.search_scroll_area.width(), metrics)
 
     def upd(self):
         global result_count
@@ -124,7 +124,6 @@ class MyWindow(QMainWindow):
                 finished = False
         if result_count == 0 and finished:
             self.set_search_label('Nothing found.\nCheck search keywords or your connection.')
-
 
     def start_search(self):
         self.set_search_label('Searching...')
@@ -145,27 +144,19 @@ class MyWindow(QMainWindow):
         widg = self.search_scroll_area.widget()
 
         if isinstance(widg, QLabel):
-
+            # if layout inside scroll widget
             new_widget = QWidget()
             new_widget.setAutoFillBackground(True)
             new_layout = QVBoxLayout()
-
             new_layout.setAlignment(QtCore.Qt.AlignTop)
-
             new_widget.setLayout(new_layout)
 
             self.search_scroll_area.setWidget(new_widget)
-        widg = self.search_scroll_area.widget()
-        style = '''
-                QWidget:hover
-                {
-                    background-color: rgb(75, 100, 200);
-                }
-                '''
+        widget = self.search_scroll_area.widget()
         add_widget = ResultWidget(track)
         self.current_results.append(add_widget)
-        widg.layout().addWidget(add_widget.get_widget())
-
+        widget.layout().addWidget(add_widget.get_widget())
+        add_widget.truncate(self.search_scroll_area.width())
 
 
 app = QApplication(sys.argv)
