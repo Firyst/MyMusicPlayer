@@ -26,4 +26,5 @@ def get_music_list(search_request):
 
                 except KeyError:
                     continue
+    print("хуй")
     return
