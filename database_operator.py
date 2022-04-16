@@ -6,8 +6,8 @@ from main import MusicTrack, Playlist, md5
 import json
 import os
 
-TRACK_KEYWORDS = ['title', 'album', 'artist', 'composer', 'date', 'discnumber', 'tracknumber', 'genre',
-                  'duration', 'bitrate', 'data', 'added']
+TRACK_KEYWORDS = ['file_hash', 'file_size', 'title', 'album', 'artist', 'date', 'discnumber', 'tracknumber', 'genre',
+                  'duration', 'bitrate', 'data', 'counter', 'added']
 
 PL_KEYWORDS = ['description', 'track_count', 'genre', 'created']
 
@@ -24,12 +24,10 @@ def write_config(d):
 
 class MusicDatabase:
     # sql operator
-    def __init__(self, database, create_new=False):
+    def __init__(self, database):
         self.cfg = read_config()
         self.con = sqlite3.connect(database)
         self.cur = self.con.cursor()
-        if create_new:
-            self.create_db_structure()
 
     def exec_w(self, req):
         """
@@ -57,16 +55,15 @@ class MusicDatabase:
             track_data = self.exec_r(f'SELECT * FROM tracks WHERE id = {track_id}')[0]
         except IndexError:
             return None
-        print(track_data)
         if track_data[2]:
             # if file_name is used (local)
-            new_track = MusicTrack(track_id, track_data[2], True)
+            new_track = MusicTrack(track_id, track_data[1], track_data[2], True)
         else:
-            new_track = MusicTrack(track_id, track_data[1], False)
+            new_track = MusicTrack(track_id, track_data[1], '', False)
         metadata = {"file_hash": track_data[3]}
         for i in range(len(TRACK_KEYWORDS)):
-            if track_data[5 + i]:
-                metadata[TRACK_KEYWORDS[i]] = track_data[5 + i]
+            if track_data[3 + i]:
+                metadata[TRACK_KEYWORDS[i]] = track_data[3 + i]
 
         new_track.metadata = metadata
         new_track.metadata_check()
@@ -83,33 +80,29 @@ class MusicDatabase:
             req = req + ' AND '.join(map(lambda x: f'{x}="{kwargs[x]}"', kwargs.keys()))
         else:
             req = req + ' AND '.join(map(lambda x: f'{x} LIKE "%{kwargs[x]}%"', kwargs.keys()))
-        print(req)
         return list(map(lambda x: x[0], self.exec_r(req)))
 
-    def add_track(self, track, override_id='NULL', add_time=int(time.time())):
+    def add_track(self, track, override_id='NULL', add_time=0):
         """
         Add track for the first time.
         Returns ID.
         """
+        if add_time == 0:
+            add_time = int(time.time())
 
-        if track.is_local:
-            req = f'INSERT INTO tracks VALUES({override_id}, "", "{track.file}",' \
-                  f'"{md5(track.file)}", {os.path.getsize(track.file)}, '
-        else:
-            req = f'INSERT INTO tracks VALUES({override_id}, "{track.file}", "",' \
-                  f'"{md5(track.file)}", {os.path.getsize(track.file)}, '
+        req = f'INSERT INTO tracks VALUES({override_id}, "{track.file_link}", "{track.file_path}", '
 
         # append main data of track
         all_args = dict()
         for kw in TRACK_KEYWORDS[:-1]:
             req = req + f'"{track.get_param(kw, "")}", '
-            if track.get_param(kw, None):
-                all_args[kw] = track.get_param(kw)
+            if track.get_param(kw, ''):
+                all_args[kw] = track.get_param(kw, '')
         # append timestamp
         req = req + f'"{add_time}")'
 
         self.exec_w(req)
-        return self.find_track(True, **all_args)[0]
+        return self.find_track(True, file_hash=track['file_hash'])[0]
 
     def update_track(self, update_id, updated_track):
         """
@@ -130,6 +123,7 @@ class MusicDatabase:
         Add playlist to database and make links for each track.
         Returns ID.
         """
+        playlist.data_update()
 
         req = f'INSERT INTO playlists VALUES({override_id}, "{playlist.name}", ' \
               f'"{playlist.get_param("description", "")}",' \
@@ -141,7 +135,6 @@ class MusicDatabase:
         search_data.pop('duration')
         search_data.pop('created')
         search_data['name'] = playlist.name
-        print(search_data)
         new_id = self.find_playlist(True, **search_data)[0]
 
         # add tracks into playlist
@@ -168,7 +161,6 @@ class MusicDatabase:
             tracks = self.exec_r(
                 f"SELECT id FROM tracks INNER JOIN playlist_tracks ON playlist_id = {playlist_id} AND "
                 f"track_id = id ORDER BY position")
-            print(tracks)
             for track_id in tracks:
                 res_playlist.add_track(self.get_track(track_id[0]))
             res_playlist.data_update()
@@ -187,7 +179,6 @@ class MusicDatabase:
             req = req + ' AND '.join(map(lambda x: f'{x}="{kwargs[x]}"', kwargs.keys()))
         else:
             req = req + ' AND '.join(map(lambda x: f'{x} LIKE "%{kwargs[x]}%"', kwargs.keys()))
-        print(req)
         return list(map(lambda x: x[0], self.exec_r(req)))
 
     def update_playlist(self, update_id, updated_playlist):
@@ -196,7 +187,9 @@ class MusicDatabase:
         """
         add_time = int(self.exec_r(f"SELECT created FROM playlists WHERE id = {update_id}")[0][0])
         self.remove_playlist(update_id)
+        print('removed')
         self.add_playlist(updated_playlist, override_id=update_id, create_time=add_time)
+        print('added')
 
     def remove_playlist(self, playlist_id):
         """
@@ -204,6 +197,10 @@ class MusicDatabase:
         """
         self.exec_w(f"DELETE FROM playlists WHERE id={playlist_id}")
         self.exec_w(f"DELETE FROM playlist_tracks WHERE playlist_id={playlist_id}")
+
+    def close(self):
+        self.cur.close()
+        self.con.close()
 
 
 a1 = """CREATE TABLE tracks (
@@ -215,7 +212,6 @@ a1 = """CREATE TABLE tracks (
     title       STRING,
     album       STRING,
     artist      STRING,
-    composer    STRING,
     date        STRING,
     discnumber  STRING,
     tracknumber STRING,
@@ -223,6 +219,7 @@ a1 = """CREATE TABLE tracks (
     duration    INT,
     bitrate     INT,
     data        TEXT,
+    counter     INT,
     added       INT
 );
 """
@@ -243,7 +240,7 @@ a3 = """CREATE TABLE playlist_tracks (
     position    INT
 );
 """
-
+'''
 write_config({'create': [a1, a2, a3]})
 
 my_db = MusicDatabase("test.db", False)
@@ -262,3 +259,6 @@ print(my_db.update_playlist(9, my_pl))
 
 print(my_db.get_playlist(9))
 print(my_db.find_playlist(False, description="лист"))
+'''
+db = MusicDatabase('local.db')
+print(db.find_track(True, file_hash="09897b73d856647a73546ce3dd5d5c37"))

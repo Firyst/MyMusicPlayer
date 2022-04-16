@@ -1,0 +1,44 @@
+
+QWidget#Result-background:hover
+{
+    background-color: palette(base);
+}
+
+QToolButton
+{
+    border: 5px solid rgb(0, 0, 0, 0);
+    border-radius: 16px;
+}
+
+QToolButton:hover
+{
+    border: 5px solid rgb(0, 0, 0, 0);
+    border-radius: 10px;
+    background-color: palette(light);
+}
+
+QToolButton:pressed
+{
+    border: 5px solid rgb(0, 0, 0, 0);
+    border-radius: 10px;
+    background-color: rgb(58, 58, 58);
+}
+
+QTabBar::tab {
+    background-color: palette(button);
+    border-top: 1px solid palette(light);
+    border-left: 1px solid palette(light);
+    border-right: 1px solid palette(light);
+    padding: 10px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+
+}QTabBar::tab:selected {
+    background-color: palette(base);
+    border-top: 1px solid palette(light);
+    border-left: 1px solid palette(light);
+    border-right: 1px solid palette(light);
+    padding: 10px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
