@@ -1,14 +1,15 @@
 import time
 from PyQt5 import uic, QtGui, QtCore
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QLabel, QPushButton, QTextEdit, QLayout, \
-    QVBoxLayout, QHBoxLayout, QSizePolicy, QToolButton, QFileDialog, QMessageBox, QStyle, QSlider, QScrollArea
+    QVBoxLayout, QHBoxLayout, QSizePolicy, QToolButton, QFileDialog, QMessageBox, QStyle, QSlider, QScrollArea, QMenu, QLineEdit
 from PyQt5.QtGui import QIcon, QPixmap, QFontMetrics, QFont, QPalette, QColor
-from main import get_scrappers, duration_to_string, MusicTrack, Playlist, bytes_to_string
+from main import duration_to_string, MusicTrack, Playlist, bytes_to_string
 from datetime import datetime
 from pygame import mixer
 import threading
 import requests
 from database_operator import MusicDatabase
+import importlib
 import sqlite3
 import sys
 import json
@@ -25,7 +26,8 @@ downloader_on = False  # special variable to turn the downloader off
 running = True  # cos
 
 # globals
-counted_width = [0, 0]
+track_width = [0, 0]  # calculated optimal symbol width for tracks
+pl_width = [0, 0]  # calculated optimal symbol width for playlists
 last_width = 0
 DEBUG_MODE = True
 TRACK_PROPERTIES = {'title': "Title", 'artist': "Artist", 'album': "Album", 'duration': "Duration",
@@ -42,6 +44,21 @@ def pd(*args):
     """
     if DEBUG_MODE:
         print(*args)
+
+
+def get_scrappers():
+    # import all available scrappers
+    found = dict()
+    for file in os.listdir('scrappers/'):
+        # print(file)
+        try:
+            name, ext = file.rsplit('.', 1)
+            if name == 'example':
+                continue
+            found[name] = getattr(importlib.import_module('scrappers.' + name), 'get_music_list')
+        except ValueError or ImportError:
+            continue
+    return found
 
 
 def add_to_download_queue(track, task_type, folder, prior=False):
@@ -61,7 +78,6 @@ def downloader(message_func=None):
     while downloader_on:
         if download_queue:
             task, task_type, folder = download_queue.pop(0)
-            print(task)
             try:
                 file = requests.get(task.file_link)
                 with open(os.path.join(folder, str(task.id) + '.mp3'), 'wb') as new_file:
@@ -79,22 +95,6 @@ def updater(target, delay):
     while running:
         time.sleep(delay)
         target()
-
-
-class HoverToolButton(QToolButton):
-    def __init__(self, default_icon, hover_icon):
-        super().__init__()
-        self.icon1 = default_icon
-        self.icon2 = hover_icon
-
-    def event(self, event):
-        if event.type() == QtCore.QEvent.HoverEnter:
-            print("enter")
-            self.setIcon(self.icon2)
-        elif event.type() == QtCore.QEvent.HoverLeave:
-            print("leave")
-            self.setIcon(self.icon1)
-        return super().event(event)
 
 
 def run_scrapper(req, source_name, scrapper_func, update):
@@ -155,6 +155,162 @@ class StyleManager:
         return new_palette
 
 
+# noinspection PyUnresolvedReferences
+class PlaylistWidget:
+    def __init__(self, parent, playlist, font, properties_func=None):
+        self.properties_func = properties_func  # open properties
+        self.parent = parent
+        self.in_library = False
+
+        # UI init
+        my_widget = QWidget()
+        my_widget.setObjectName("Result-background")
+        label_layout = QGridLayout()
+        self.styles = parent.styles
+
+        # name
+        self.name_label = QLabel(playlist.name)
+        self.name_label.setWordWrap(False)
+        label_layout.addWidget(self.name_label, 0, 2, 1, 3)
+        # self.name_label.setFont(font)
+
+        # desc
+        self.desc_label = QLabel(playlist.get_param('description', "No description."))
+        self.desc_label.setWordWrap(False)
+        label_layout.addWidget(self.desc_label, 0, 5, 1, 5)
+        # self.desc_label.setFont(font)
+
+        # track_count
+        self.duration_label = QLabel(str(playlist.get_param('track_count')))
+        self.duration_label.setWordWrap(False)
+        label_layout.addWidget(self.duration_label, 0, 10, 1, 1)
+        # self.duration_label.setFont(font)
+
+        # duration
+        self.duration_label = QLabel(duration_to_string(playlist.get_param('duration')))
+        self.duration_label.setWordWrap(False)
+        label_layout.addWidget(self.duration_label, 0, 11, 1, 1)
+        # self.duration_label.setFont(font)
+
+        my_widget.setLayout(label_layout)
+        my_widget.setAutoFillBackground(True)
+        my_widget.setAttribute(QtCore.Qt.WA_Hover)
+
+        self.button_play = QToolButton()
+        self.button_play.setIcon(self.styles.get_icon('play'))
+        self.button_play.setIconSize(QtCore.QSize(16, 16))
+        self.button_play.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.button_play.setMinimumSize(32, 32)
+        self.button_play.setObjectName("play_button")
+        self.button_play.clicked.connect(self.test_play)
+
+        label_layout.addWidget(self.button_play, 0, 0, 1, 1)
+
+        self.my_widget = my_widget
+
+        self.playlist = playlist
+        self.is_playing = False
+
+        # cos
+        self.add_now = QPushButton()
+        self.add_now.clicked.connect(self.add_to_library)
+
+        self.update_icons()
+        self.my_widget.mousePressEvent = self.cum
+
+    def cum(self, *args):
+        view = PlaylistView(self.parent)
+        self.parent.tab_library.layout().addWidget(view)
+
+    def test_play(self):
+        pass
+
+    def track_manage(self):
+        if self.in_library:
+            # remove
+            db.remove_track(self.track.id)
+            self.in_library = False
+            self.update_icons()
+        else:
+            # add
+            self.track.id = 0
+            if self.parent.playing_track:
+                if self.parent.playing_track.file_link == self.track.file_link:
+                    # is playing now and is ready to be added
+                    self.add_to_library()
+                    return 0
+            self.track.temp = self.add_now
+            add_to_download_queue(self.track, 'add', os.path.join(self.parent.config['storage'], 'cache'))
+            self.parent.next_download_message(True)
+            self.button_add.setIcon(self.styles.get_icon("update"))
+
+    def add_to_library(self):
+        # update track
+        new_id = db.add_track(self.track)
+        self.track = db.get_track(new_id)
+
+        # add it to main playlist
+        lib = db.get_playlist(1)
+        lib.add_track(self.track)
+        lib.data_update()
+        db.update_playlist(1, lib)
+
+        # update properties
+        if self.parent.search_properties_track:
+            if self.track.file_link == self.parent.search_properties_track.file_link:
+                self.parent.search_properties_track = self.track
+                self.parent.show_search_properties()
+        self.in_library = True
+        self.update_icons()
+
+    def update_icons(self):
+        if self.is_playing:
+            self.button_play.setIcon(self.styles.get_icon("pause"))
+        else:
+            self.button_play.setIcon(self.styles.get_icon("play"))
+
+    def enter(self, *args, **kwargs):
+        # add button event
+        if self.in_library:
+            self.button_add.setIcon(self.styles.get_icon("close"))
+
+    def leave(self, event, **kwargs):
+        # add button event
+        if self.in_library:
+            self.button_add.setIcon(self.styles.get_icon("done"))
+
+    def get_widget(self):
+        return self.my_widget
+
+    def truncate(self, max_width, metrics=None):
+        # resize labels for the given proportions
+        global pl_width
+        props = [0.2, 0.35]
+        labels = [self.name_label, self.desc_label]
+        texts = ["        " + self.playlist.name, self.playlist['description']]
+
+        if metrics is None:
+            metrics = QFontMetrics(self.name_label.font())
+        for i in range(len(props)):
+            if pl_width[i]:
+                # if symbol width is already calculated
+                if len(texts[i]) > pl_width[i]:
+                    labels[i].setText(texts[i][:pl_width[i]] + '...')
+                else:
+                    labels[i].setText(texts[i][:pl_width[i]])
+            else:
+                size = int(props[i] * max_width)
+                text = texts[i]
+                if metrics.width(text) > size:
+                    while metrics.width(text + '...') > size:
+                        text = text[:-1]
+                    labels[i].setText(text + '...')
+                    pl_width[i] = len(text)
+                else:
+                    labels[i].setText(text)
+
+
+# noinspection PyUnresolvedReferences
 class ResultWidget:
     def __init__(self, parent, track, font, properties_func=None):
         self.properties_func = properties_func  # open properties
@@ -172,12 +328,14 @@ class ResultWidget:
         my_widget.setObjectName("Result-background")
         label_layout = QGridLayout()
         self.styles = parent.styles
+        # my_widget.setStyleSheet(self.styles.style)
 
         self.author_label = QLabel(track.get_param('author'))
         self.author_label.setWordWrap(False)
 
         label_layout.addWidget(self.author_label, 0, 3, 1, 3)
-        self.author_label.setFont(font)
+        # self.author_label.setFont(font)
+
         self.name_label = QLabel(track.get_param('name'))
         self.name_label.setWordWrap(False)
         label_layout.addWidget(self.name_label, 0, 6, 1, 4)
@@ -224,7 +382,6 @@ class ResultWidget:
         self.my_widget = my_widget
 
         self.track = track
-        self.my_widget.setMouseTracking(True)
         self.button_more.clicked.connect(self.view_track_data)
 
         self.add_now = QPushButton()
@@ -233,7 +390,13 @@ class ResultWidget:
         self.update_icons()
 
     def test_play(self):
+        if self.parent.playing_track:
+            if self.parent.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
+                # track is playing
+                self.parent.player_pause()
+                return 1
         self.parent.set_player_queue(self.track)
+        self.button_play.setIcon(self.styles.get_icon("update"))
 
     def track_manage(self):
         if self.in_library:
@@ -261,13 +424,11 @@ class ResultWidget:
 
         # add it to main playlist
         lib = db.get_playlist(1)
-        print('get', lib)
         lib.add_track(self.track)
         lib.data_update()
-        print('now', lib)
-        lib.name = "test"
         db.update_playlist(1, lib)
 
+        # update properties
         if self.parent.search_properties_track:
             if self.track.file_link == self.parent.search_properties_track.file_link:
                 self.parent.search_properties_track = self.track
@@ -276,10 +437,19 @@ class ResultWidget:
         self.update_icons()
 
     def update_icons(self):
+        # add icon
         if self.in_library:
             self.button_add.setIcon(self.styles.get_icon("done"))
         else:
             self.button_add.setIcon(self.styles.get_icon("add"))
+
+        # play icon
+        if self.parent.playing_track and self.parent.playing:
+            if self.parent.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
+                # track is playing
+                self.button_play.setIcon(self.styles.get_icon("pause"))
+                return 1
+        self.button_play.setIcon(self.styles.get_icon("play"))
 
     def view_track_data(self):
         self.parent.search_properties_track = self.track
@@ -300,7 +470,7 @@ class ResultWidget:
 
     def truncate(self, max_width, metrics=None):
         # resize labels for the given proportions
-        global counted_width
+        global track_width
         self.duration_label = duration_to_string(self.track['duration'])
 
         props = [0.2, 0.3]
@@ -310,12 +480,12 @@ class ResultWidget:
         if metrics is None:
             metrics = QFontMetrics(self.name_label.font())
         for i in range(len(props)):
-            if counted_width[i]:
+            if track_width[i]:
                 # if symbol width is already calculated
-                if len(texts[i]) > counted_width[i]:
-                    labels[i].setText(texts[i][:counted_width[i]] + '...')
+                if len(texts[i]) > track_width[i]:
+                    labels[i].setText(texts[i][:track_width[i]] + '...')
                 else:
-                    labels[i].setText(texts[i][:counted_width[i]])
+                    labels[i].setText(texts[i][:track_width[i]])
             else:
                 size = int(props[i] * max_width)
                 text = texts[i]
@@ -323,7 +493,7 @@ class ResultWidget:
                     while metrics.width(text + '...') > size:
                         text = text[:-1]
                     labels[i].setText(text + '...')
-                    counted_width[i] = len(text)
+                    track_width[i] = len(text)
                 else:
                     labels[i].setText(text)
 
@@ -353,6 +523,14 @@ class QJumpSlider(QSlider):
             self.release_func(self)
 
 
+class PlaylistView(QWidget):
+    def __init__(self, parent):
+        super().__init__()
+        uic.loadUi('playlist_view.ui', self)
+        my_font = QFont(parent.search_button.font().family(), parent.search_button.font().pixelSize())
+        self.search_button.setFont(my_font)
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         global downloader_on
@@ -364,16 +542,20 @@ class MainWindow(QMainWindow):
         # setup configs
         self.styles = None
         self.config = self.update_config()
-        print(self.config)
+        pd(self.config)
 
         # init system variables
         self.current_results = []
+        self.current_playlists = []
+
+        self.window_width = self.width()
+
         self.cached_ids = set()
-        self.used_font_family = QLabel().font().family()
         self.playing_track = None
         self.playing = False
         self.play_queue = []
         self.play_start = 0
+        self.awaiting_download = False
         self.queue_pos = -1
         self.library_properties_track = None
         self.search_properties_track = None
@@ -393,6 +575,7 @@ class MainWindow(QMainWindow):
         self.label_duration = QLabel()
         self.hide_search_properties()
         self.player_init()
+        self.tab_widget.currentChanged.connect(self.tab_update)
 
         # setup services
         self.dl_thread = threading.Thread(target=downloader, args=[self.download_finish])
@@ -400,6 +583,69 @@ class MainWindow(QMainWindow):
         self.dl_thread.start()
         self.upd_thread = threading.Thread(target=updater, args=(self.update_pos, 0.25))
         self.upd_thread.start()
+
+        # create context menu for sort button
+        self.playlists_sort_menu = self.create_playlists_sort_menu()
+        self.playlists_sort_button.setMenu(self.playlists_sort_menu)
+        self.reload_playlists(None)
+
+        print(self.label.font().family())
+        self.used_font_family = self.label.font().family()
+
+    def test(self, some):
+        print(some)
+
+    def on_context_menu(self, point):
+        # show context menu
+        self.popMenu.exec_(self.playlists_sort_button.mapToGlobal(point))
+
+    def create_playlists_sort_menu(self):
+        font = QFont(self.playlists_sort_button.font().family(), self.playlists_sort_button.font().pixelSize())
+        menu = QMenu()
+        act1 = menu.addAction("Default")
+        act1.setFont(font)
+        act1.setIcon(self.styles.get_icon("no-sort"))
+        menu.addSeparator()
+
+        act1 = menu.addAction("Alphabet")
+        # act1.setFont(font)
+        act1.setIcon(self.styles.get_icon("sort1"))
+
+        act1 = menu.addAction("Alphabet")
+        # act1.setFont(font)
+        act1.setIcon(self.styles.get_icon("sort2"))
+
+        menu.addSeparator()
+
+        act1 = menu.addAction("Created")
+        act1.setFont(font)
+        act1.setIcon(self.styles.get_icon("sort1"))
+
+        act1 = menu.addAction("Created")
+        act1.setFont(font)
+        act1.setIcon(self.styles.get_icon("sort2"))
+
+        menu.addSeparator()
+
+        act1 = menu.addAction("Tracks")
+        act1.setFont(font)
+        act1.setIcon(self.styles.get_icon("sort1"))
+
+        act1 = menu.addAction("Tracks")
+        act1.setFont(font)
+        act1.setIcon(self.styles.get_icon("sort2"))
+
+        menu.addSeparator()
+
+        act1 = menu.addAction("Duration")
+        act1.setFont(font)
+        act1.setIcon(self.styles.get_icon("sort1"))
+
+        act1 = menu.addAction("Duration")
+        act1.setFont(font)
+        act1.setIcon(self.styles.get_icon("sort2"))
+
+        return menu
 
     def closeEvent(self, event):
         global downloader_on
@@ -412,6 +658,9 @@ class MainWindow(QMainWindow):
         self.set_search_label('Nothing here yet...')
         self.buttons_init()
         self.load_styles("default-dark")
+
+    def tab_update(self):
+        self.truncate_all()
 
     def next_download_message(self, new_task):
         if self.status_bar.currentMessage() == "Ready." or not new_task:
@@ -431,7 +680,6 @@ class MainWindow(QMainWindow):
         # check if no new "play" tasks appeared
         for i, queue_elem in enumerate(download_queue):
             if i > 0 and queue_elem[1] == 'play':
-                print("remove", queue_elem)
                 download_queue.remove(queue_elem)
 
         if downloaded_track.id == 0:
@@ -483,6 +731,8 @@ class MainWindow(QMainWindow):
     def save_config(self):
         with open("config.json", 'w') as f:
             f.write(json.dumps(self.config))
+
+    # Player
 
     def play_track(self, track):
         self.playing_track = track
@@ -536,8 +786,11 @@ class MainWindow(QMainWindow):
 
         self.update_player()
         self.play_next()
+        self.truncate_all()
+        self.label_player_title.setText("No Track")
 
     def update_player(self):
+        self.truncate_all()
         if self.config['shuffle']:
             self.player_button_shuffle.setIcon(self.styles.get_icon("shuffle"))
         else:
@@ -552,6 +805,9 @@ class MainWindow(QMainWindow):
             self.player_button_repeat.setIcon(self.styles.get_icon("repeat"))
         else:
             self.player_button_repeat.setIcon(self.styles.get_icon("no-repeat"))
+
+        for res in self.current_results:
+            res.update_icons()
 
     def player_pause(self):
         if self.playing_track:
@@ -574,9 +830,11 @@ class MainWindow(QMainWindow):
         self.save_config()
 
     def player_rewind(self, slider):
-        if self.playing:
+        if self.playing_track:
             mixer.music.stop()
             mixer.music.play(0, (slider.value() * self.playing_track['duration']) // 1000)
+            if not self.playing:
+                mixer.music.pause()
             self.play_start = slider.value() * self.playing_track['duration']
             self.update_pos()
 
@@ -584,7 +842,6 @@ class MainWindow(QMainWindow):
         """
         Tick function.
         """
-        self.label1.setText(str(mixer.music.get_pos()))
         if self.playing_track:
             if mixer.music.get_pos() == -1:
                 self.play_next()
@@ -608,6 +865,8 @@ class MainWindow(QMainWindow):
         self.playing_track = None
         self.playing = False
         mixer.music.stop()
+
+        self.update_player()
 
         if isinstance(playable, MusicTrack):
             pd('adding', MusicTrack, 'to queue')
@@ -650,7 +909,7 @@ class MainWindow(QMainWindow):
             self.update_player()
             return 0
         else:
-            print('queue', self.play_queue)
+            pd('queue', self.play_queue)
             if self.config['repeat']:
                 if self.queue_pos == len(self.play_queue) - 1:
                     # repeat on, return to begin
@@ -674,6 +933,7 @@ class MainWindow(QMainWindow):
             if cur_track.file_path or cur_track.id in self.cached_ids:
                 # if ready to play
                 self.play_track(cur_track)
+                self.awaiting_download = False
 
             # caching
             for i in range(self.queue_pos, min(len(self.play_queue), 1 + self.config["queue_cache"] + self.queue_pos)):
@@ -689,10 +949,44 @@ class MainWindow(QMainWindow):
                                 add_to_download_queue(elem, 'cache', os.path.join(self.config['storage'], 'cache'))
                             else:
                                 # add play task for current track if it needs to be downloaded
+                                self.awaiting_download = True
                                 add_to_download_queue(elem, 'play', os.path.join(self.config['storage'], 'cache'), True)
                                 self.next_download_message(True)
                                 self.label_player_title.setText("Downloading...")
                                 self.label_player_artist.setText('')
+            self.truncate_all()
+
+    # Playlists
+
+    def reload_playlists(self, sorting_key=None):
+        all_pl = [db.get_playlist(i) for i in db.find_playlist(True)]
+        if sorting_key:
+            all_pl.sort(key=sorting_key)
+        print(all_pl)
+        self.current_playlists = []
+        if all_pl:
+            # generate new layout for scroll area
+            new_widget = QWidget()
+            new_widget.setAutoFillBackground(True)
+            new_layout = QVBoxLayout()
+            new_layout.setAlignment(QtCore.Qt.AlignTop)
+            new_widget.setLayout(new_layout)
+            self.playlists_scroll_area.setWidget(new_widget)
+
+            # add playlists
+            for playlist in all_pl:
+                font = self.label_current_time.font()
+                font = QFont(font.family(), font.pointSize())
+
+                # generate result widget
+                add_widget = PlaylistWidget(self, playlist, font)
+
+                self.current_playlists.append(add_widget)
+                new_widget.layout().addWidget(add_widget.get_widget())
+            self.truncate_all()
+        else:
+            res_label = QLabel("Nothing found...")
+            self.playlists_scroll_area.setWidget(res_label)
 
     def buttons_init(self):
         """
@@ -716,25 +1010,71 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(self.styles.style)
         self.setPalette(self.styles.palette)
 
+        self.search_button.setIcon(self.styles.get_icon("search"))
+        self.properties_button.setIcon(self.styles.get_icon("close"))
+        self.playlists_new_button.setIcon(self.styles.get_icon("add"))
+        self.playlists_sort_button.setIcon(self.styles.get_icon("sort"))
+
     def debug(self, *args, **kwargs):
         print('debug')
 
+    def player_truncate(self, metrics):
+        # truncate player labels
+
+        labels = [self.label_player_title, self.label_player_artist]
+        if self.playing_track:
+            texts = [self.playing_track.get_param('title', 'Unnamed'),
+                     self.playing_track.get_param('artist', 'Unknown artist')]
+        else:
+            if self.awaiting_download:
+                texts = ["Loading...", "-"]
+            else:
+                texts = ["No track", '-']
+        size = self.player_widget.width() // 5
+        if size <= 40:
+            # on create
+            size = 100
+
+        for i in range(2):
+            text = texts[i]
+            if metrics.width(text) > size:
+                while metrics.width(text + '...') > size:
+                    text = text[:-1]
+                labels[i].setText(text + '...')
+            else:
+                labels[i].setText(text)
+
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
+        if self.width() != self.window_width:
+            # custom resize event
+            self.window_width = self.width()
+            self.truncate_all()
+
+    def truncate_all(self):
         """
         Truncate text while resizing
         """
-        global last_width
-        global counted_width
-        if self.current_results and self.search_scroll_area.width() != last_width:
-            counted_width = [0, 0]
-            last_width = self.search_scroll_area.width()
-            metrics = QFontMetrics(self.current_results[0].name_label.font())
+        global track_width
+        global pl_width
+
+        metrics = QFontMetrics(self.label_player_title.font())
+        self.player_truncate(metrics)
+        # width changed
+        # truncate result text
+        if self.current_results:
+            track_width = [0, 0]
             for result in self.current_results:
-                result.truncate(last_width, metrics)
+                result.truncate(self.search_scroll_area.width(), metrics)
+        # truncate playlist text
+        if self.current_playlists:
+            pl_width = [0, 0]
+            for playlist in self.current_playlists:
+                playlist.truncate(self.playlists_scroll_area.width(), metrics)
 
     def hide_search_properties(self):
         self.search_properties.hide()
         self.search_properties_track = None
+        self.truncate_all()
 
     def show_search_properties(self):
         """
@@ -767,6 +1107,7 @@ class MainWindow(QMainWindow):
         data_layout.addStretch(0)
         properties_widget.setLayout(data_layout)
         self.properties_area.setWidget(properties_widget)
+        self.truncate_all()
 
     def update_results(self):
         global result_count
@@ -776,6 +1117,7 @@ class MainWindow(QMainWindow):
             while len(scrapper_res[0]):
                 t = scrapper_res[0].pop(0)
                 self.add_search_result(t)
+                self.truncate_all()
                 result_count += 1
             if not scrapper_res[1]:
                 finished = False
@@ -823,7 +1165,7 @@ class MainWindow(QMainWindow):
         font = QFont(font.family(), font.pointSize())
 
         # generate result widget
-        add_widget = ResultWidget(self, track, font, self.show_search_properties)
+        add_widget = ResultWidget(self, track, self.label.font(), self.show_search_properties)
 
         self.current_results.append(add_widget)
         widget.layout().addWidget(add_widget.get_widget())
@@ -834,7 +1176,7 @@ class SetupWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         uic.loadUi('setup.ui', self)
-        self.setStyleSheet("QWidget{font-family: " + QLabel().font().family() + "}")
+        # self.setStyleSheet("QWidget{font-family: " + QLabel().font().family() + "}")
 
         self.local_setup_button.clicked.connect(self.local_setup)
         self.select_folder_button1.clicked.connect(self.open_folder_dialog)
@@ -884,7 +1226,7 @@ class SetupWindow(QMainWindow):
             print("Creating new db.")
             try:
                 test_db.create_db_structure()
-                test_db.add_playlist(Playlist(0, "My library", description="System playlist for storing saved tracks."))
+                test_db.add_playlist(Playlist(0, "My tracks", description="All saved tracks."))
                 test_db.close()
             except sqlite3.OperationalError or KeyError or ValueError or IndexError or TypeError:
                 # some error occurred :(
@@ -905,6 +1247,8 @@ app = QApplication(sys.argv)
 # check if setup is required
 with open("config.json", 'r') as j:
     cfg = json.loads(j.read())
+QtGui.QFontDatabase.addApplicationFont(os.path.join("styles", cfg["theme"], "SFUIText-Light.ttf"))
+print(QtGui.QFontDatabase.styleString)
 if cfg["first_run"]:
     ex = SetupWindow()
     ex.show()

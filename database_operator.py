@@ -174,11 +174,15 @@ class MusicDatabase:
         Select tracks with given properties.
         Exact search uses "=", non-exact uses "like"
         """
-        req = "SELECT id FROM playlists WHERE "
-        if exact_search:
-            req = req + ' AND '.join(map(lambda x: f'{x}="{kwargs[x]}"', kwargs.keys()))
-        else:
-            req = req + ' AND '.join(map(lambda x: f'{x} LIKE "%{kwargs[x]}%"', kwargs.keys()))
+        req = "SELECT id FROM playlists "
+        if kwargs:
+            req += "WHERE "
+            if exact_search:
+                req = req + ' AND '.join(map(lambda x: f'{x}="{kwargs[x]}"', kwargs.keys()))
+            else:
+                req = req + ' AND '.join(map(lambda x: f'{x} LIKE "%{kwargs[x]}%"', kwargs.keys()))
+
+        print(req)
         return list(map(lambda x: x[0], self.exec_r(req)))
 
     def update_playlist(self, update_id, updated_playlist):
@@ -187,9 +191,7 @@ class MusicDatabase:
         """
         add_time = int(self.exec_r(f"SELECT created FROM playlists WHERE id = {update_id}")[0][0])
         self.remove_playlist(update_id)
-        print('removed')
         self.add_playlist(updated_playlist, override_id=update_id, create_time=add_time)
-        print('added')
 
     def remove_playlist(self, playlist_id):
         """

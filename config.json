@@ -1,1 +1,1 @@
-{"first_run": true, "storage": "/home/philipp/Projects/MyMusicPlayer", "status_bar_enabled": true, "download_stack_enabled": false, "queue_cache": 1, "volume": 0.05, "repeat": true, "shuffle": true}
+{"first_run": false, "storage": "/home/philipp/Projects/MyMusicPlayer", "status_bar_enabled": true, "download_stack_enabled": false, "queue_cache": 1, "volume": 0.51, "repeat": false, "shuffle": false, "theme": "default-dark"}

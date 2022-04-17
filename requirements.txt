@@ -1,0 +1,7 @@
+audio_metadata==0.11.1
+beautifulsoup4==4.11.1
+eyed3==0.9.6
+plyer==2.0.0
+pygame==2.1.2
+PyQt5==5.15.6
+requests==2.22.0

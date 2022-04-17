@@ -1,5 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
+import sys
+sys.path.insert(0,'..')
 from main import MusicTrack, string_to_duration
 
 

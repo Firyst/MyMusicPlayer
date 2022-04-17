@@ -37,7 +37,7 @@
      <number>0</number>
     </property>
     <item row="0" column="0">
-     <widget class="QTabWidget" name="tabWidget">
+     <widget class="QTabWidget" name="tab_widget">
       <property name="tabPosition">
        <enum>QTabWidget::North</enum>
       </property>
@@ -45,89 +45,204 @@
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>4</number>
+       <number>0</number>
+      </property>
+      <property name="tabsClosable">
+       <bool>false</bool>
       </property>
       <widget class="QWidget" name="tab_playing">
        <attribute name="title">
         <string>Playing</string>
        </attribute>
+       <widget class="QPushButton" name="testbutton">
+        <property name="geometry">
+         <rect>
+          <x>210</x>
+          <y>110</y>
+          <width>90</width>
+          <height>28</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>PushButton</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
        <widget class="QToolButton" name="toolButton">
         <property name="geometry">
          <rect>
-          <x>130</x>
-          <y>120</y>
-          <width>111</width>
+          <x>390</x>
+          <y>230</y>
+          <width>191</width>
           <height>71</height>
          </rect>
         </property>
         <property name="text">
-         <string>...</string>
+         <string>Die</string>
         </property>
-        <property name="popupMode">
-         <enum>QToolButton::MenuButtonPopup</enum>
-        </property>
-        <property name="arrowType">
-         <enum>Qt::RightArrow</enum>
+        <property name="toolButtonStyle">
+         <enum>Qt::ToolButtonTextBesideIcon</enum>
         </property>
        </widget>
-       <widget class="QLabel" name="label1">
+       <widget class="QLabel" name="label">
         <property name="geometry">
          <rect>
-          <x>380</x>
-          <y>180</y>
-          <width>111</width>
-          <height>41</height>
+          <x>500</x>
+          <y>130</y>
+          <width>131</width>
+          <height>71</height>
          </rect>
         </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
+        <property name="textInteractionFlags">
+         <set>Qt::LinksAccessibleByMouse|Qt::TextEditable|Qt::TextSelectableByMouse</set>
+        </property>
        </widget>
-       <widget class="QSlider" name="horizontalSlider">
+       <widget class="QLineEdit" name="lineEdit">
         <property name="geometry">
          <rect>
-          <x>280</x>
-          <y>320</y>
-          <width>160</width>
-          <height>22</height>
+          <x>160</x>
+          <y>260</y>
+          <width>113</width>
+          <height>28</height>
          </rect>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
         </property>
        </widget>
       </widget>
-      <widget class="QWidget" name="tab">
+      <widget class="QWidget" name="tab_library">
        <attribute name="title">
         <string>Tracks</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_3">
-        <item row="0" column="1">
-         <widget class="QPushButton" name="pushButton_3">
-          <property name="text">
-           <string>PushButton</string>
+       <layout class="QGridLayout" name="gridLayout_3"/>
+      </widget>
+      <widget class="QWidget" name="tab_playlists">
+       <attribute name="title">
+        <string>Playlists</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QWidget" name="search_menu_2" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>2</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
           </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QPushButton" name="pushButton_2">
-          <property name="text">
-           <string>PushButton</string>
-          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_8">
+           <item>
+            <layout class="QHBoxLayout" name="playlist_field" stretch="6,1,1">
+             <item>
+              <widget class="QLineEdit" name="search_request_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="focusPolicy">
+                <enum>Qt::ClickFocus</enum>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+               <property name="dragEnabled">
+                <bool>true</bool>
+               </property>
+               <property name="placeholderText">
+                <string>Search playlists...</string>
+               </property>
+               <property name="clearButtonEnabled">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="playlists_new_button">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>100</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="focusPolicy">
+                <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="text">
+                <string>Create</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="playlists_sort_button">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>100</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="focusPolicy">
+                <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="text">
+                <string>Sort  </string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QScrollArea" name="playlists_scroll_area">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="widgetResizable">
+              <bool>true</bool>
+             </property>
+             <widget class="QWidget" name="scrollAreaWidgetContents_2">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>753</width>
+                <height>370</height>
+               </rect>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_2"/>
+             </widget>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_3">
-       <attribute name="title">
-        <string>Playlists</string>
-       </attribute>
-      </widget>
       <widget class="QWidget" name="tab_search">
        <attribute name="title">
-        <string>Search</string>
+        <string> Search</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_4" rowstretch="0">
+       <layout class="QGridLayout" name="gridLayout_4" rowstretch="0" columnstretch="0,0">
         <property name="rightMargin">
          <number>9</number>
         </property>
@@ -142,6 +257,9 @@
           <layout class="QVBoxLayout" name="verticalLayout_5">
            <item>
             <widget class="QPushButton" name="properties_button">
+             <property name="focusPolicy">
+              <enum>Qt::NoFocus</enum>
+             </property>
              <property name="text">
               <string>Close</string>
              </property>
@@ -164,7 +282,7 @@
                 <x>0</x>
                 <y>0</y>
                 <width>236</width>
-                <height>386</height>
+                <height>372</height>
                </rect>
               </property>
               <property name="layoutDirection">
@@ -216,10 +334,13 @@
              <item>
               <widget class="QPushButton" name="search_button">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
+               </property>
+               <property name="focusPolicy">
+                <enum>Qt::NoFocus</enum>
                </property>
                <property name="autoFillBackground">
                 <bool>false</bool>
@@ -228,16 +349,7 @@
                 <string notr="true"/>
                </property>
                <property name="text">
-                <string>Search</string>
-               </property>
-               <property name="autoDefault">
-                <bool>false</bool>
-               </property>
-               <property name="default">
-                <bool>false</bool>
-               </property>
-               <property name="flat">
-                <bool>false</bool>
+                <string> Search</string>
                </property>
               </widget>
              </item>
@@ -260,7 +372,7 @@
                 <x>0</x>
                 <y>0</y>
                 <width>491</width>
-                <height>384</height>
+                <height>370</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout"/>
@@ -389,7 +501,7 @@
              <string>-</string>
             </property>
             <property name="wordWrap">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -405,7 +517,7 @@
              <string>-</string>
             </property>
             <property name="wordWrap">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
            </widget>
           </item>

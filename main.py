@@ -51,21 +51,6 @@ def duration_to_string(seconds):
     return '0:' + str(seconds).rjust(2, '0')
 
 
-def get_scrappers():
-    # import all available scrappers
-    found = dict()
-    for file in os.listdir('scrappers/'):
-        # print(file)
-        try:
-            name, ext = file.rsplit('.', 1)
-            if name == 'example':
-                continue
-            found[name] = getattr(importlib.import_module('scrappers.' + name), 'get_music_list')
-        except ValueError or ImportError:
-            continue
-    return found
-
-
 class MusicTrack:
     def __init__(self, track_id, file_link, file_path, is_local, **kwargs):
         """file_link should be a complete url if if_local=True, otherwise a path to local file"""
