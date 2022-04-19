@@ -2,7 +2,7 @@
 
 import sqlite3
 import time
-from main import MusicTrack, Playlist, md5
+from serendipity.main import MusicTrack, Playlist, md5
 import json
 import os
 
@@ -13,6 +13,7 @@ PL_KEYWORDS = ['description', 'track_count', 'genre', 'created']
 
 
 def read_config():
+    print(os.listdir())
     with open("sql_config.json") as j:
         return json.loads(j.read())
 
@@ -25,6 +26,7 @@ def write_config(d):
 class MusicDatabase:
     # sql operator
     def __init__(self, database):
+        print(database)
         self.cfg = read_config()
         self.con = sqlite3.connect(database)
         self.cur = self.con.cursor()
@@ -261,6 +263,8 @@ print(my_db.update_playlist(9, my_pl))
 
 print(my_db.get_playlist(9))
 print(my_db.find_playlist(False, description="лист"))
-'''
+
+print(os.listdir())
 db = MusicDatabase('local.db')
 print(db.find_track(True, file_hash="09897b73d856647a73546ce3dd5d5c37"))
+'''

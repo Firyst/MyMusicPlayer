@@ -1,8 +1,13 @@
 QWidget
 {
-font-family: "SF UI Text"
+font-family: "SF UI Text";
+font-size: 15px;
 }
 
+QLabel
+{
+    color: rgb(222, 222, 222);
+}
 
 QWidget#Result-background:hover
 {

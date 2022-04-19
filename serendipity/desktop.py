@@ -1,19 +1,20 @@
 import time
 from PyQt5 import uic, QtGui, QtCore
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QLabel, QPushButton, QTextEdit, QLayout, \
-    QVBoxLayout, QHBoxLayout, QSizePolicy, QToolButton, QFileDialog, QMessageBox, QStyle, QSlider, QScrollArea, QMenu, QLineEdit
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QLabel, QPushButton, QVBoxLayout, \
+    QSizePolicy, QToolButton, QStyle, QSlider, QMenu
 from PyQt5.QtGui import QIcon, QPixmap, QFontMetrics, QFont, QPalette, QColor
-from main import duration_to_string, MusicTrack, Playlist, bytes_to_string
+from serendipity.main import duration_to_string, MusicTrack, Playlist, bytes_to_string
 from datetime import datetime
 from pygame import mixer
 import threading
 import requests
-from database_operator import MusicDatabase
+from serendipity.database_operator import MusicDatabase
+from style_manager import StyleManager
 import importlib
-import sqlite3
 import sys
 import json
 import os
+from serendipity.ui_setup import SetupWindow
 
 test_data = []
 # global queues
@@ -107,52 +108,6 @@ def run_scrapper(req, source_name, scrapper_func, update):
             update.click()
     result_queue[source_name][1] = True
     update.click()
-
-
-class StyleManager:
-    def __init__(self, folder):
-        self.dir = folder
-        self.icons = dict()
-        self.style = ""
-        self.palette = QPalette()
-
-    def load_icons(self, icon_names):
-        """
-        Load icons with specified names (iterable).
-        """
-        for icon_name in icon_names:
-            icon = QIcon()
-            icon.addPixmap(QPixmap(os.path.join(self.dir, icon_name + ".png")), QIcon.Normal, QIcon.Off)
-            self.icons[icon_name] = icon
-
-    def get_icon(self, name):
-        """
-        Loads icon (if necessary) and returns it.
-        """
-        if name not in self.icons:
-            self.load_icons([name])
-        return self.icons[name]
-
-    def load_style(self, filename):
-        """
-        Just read a QSS file.
-        """
-        with open(os.path.join(self.dir, filename)) as f:
-            self.style = self.style + f.read() + '\n'
-
-    def load_palette(self, filename):
-        """
-        Create QPalette from JSON file.
-        """
-        new_palette = QPalette()
-        with open(os.path.join(self.dir, filename)) as j:
-            palette = json.loads(j.read())
-            for color_role in palette:
-                role = eval(f"QPalette.{color_role}")
-                color = palette[color_role]
-                new_palette.setColor(role, QColor(color[0], color[1], color[2], color[3]))
-        self.palette = new_palette
-        return new_palette
 
 
 # noinspection PyUnresolvedReferences
@@ -382,6 +337,7 @@ class ResultWidget:
         self.my_widget = my_widget
 
         self.track = track
+        self.track.upd_func = lambda: self.button_play.setIcon(self.styles.get_icon("pause"))
         self.button_more.clicked.connect(self.view_track_data)
 
         self.add_now = QPushButton()
@@ -395,8 +351,8 @@ class ResultWidget:
                 # track is playing
                 self.parent.player_pause()
                 return 1
-        self.parent.set_player_queue(self.track)
         self.button_play.setIcon(self.styles.get_icon("update"))
+        self.parent.set_player_queue(self.track)
 
     def track_manage(self):
         if self.in_library:
@@ -561,7 +517,7 @@ class MainWindow(QMainWindow):
         self.search_properties_track = None
 
         # setup UI
-        uic.loadUi('desktop.ui', self)
+        uic.loadUi(os.path.join('ui', 'desktop.ui'), self)
         self.set_search_label('Nothing here yet...')
         self.buttons_init()
         self.load_styles("default-dark")
@@ -708,6 +664,7 @@ class MainWindow(QMainWindow):
 
         if 'play' not in [t[1] for t in download_queue] and task_type == 'play':
             # play now
+            self.awaiting_download = False
             self.play_track(downloaded_track)
 
         self.next_download_message(False)
@@ -723,20 +680,20 @@ class MainWindow(QMainWindow):
         """
         Update configs from config.json
         """
-        with open("config.json", 'r') as f:
+        with open("../config.json", 'r') as f:
             config = json.loads(f.read())
         self.config = config
         return config
 
     def save_config(self):
-        with open("config.json", 'w') as f:
+        with open("../config.json", 'w') as f:
             f.write(json.dumps(self.config))
 
     # Player
 
     def play_track(self, track):
-        self.playing_track = track
         mixer.music.stop()
+        mixer.music.unload()
         if track.file_path:
             # track is downloaded
             mixer.music.load(track.file_path)
@@ -753,7 +710,11 @@ class MainWindow(QMainWindow):
         self.label_duration.setText(duration_to_string(track['duration']))
         self.label_player_title.setText(track.get_param('title', 'Unnamed'))
         self.label_player_artist.setText(track.get_param('artist', 'Unknown artist'))
+        self.playing_track = track
         self.update_player()
+        if self.playing_track.upd_func:
+            self.playing_track.upd_func()
+
 
     def player_init(self):
         """
@@ -865,8 +826,10 @@ class MainWindow(QMainWindow):
         self.playing_track = None
         self.playing = False
         mixer.music.stop()
+        mixer.music.unload()
 
         self.update_player()
+        print(type(playable), isinstance(playable, MusicTrack))
 
         if isinstance(playable, MusicTrack):
             pd('adding', MusicTrack, 'to queue')
@@ -883,6 +846,7 @@ class MainWindow(QMainWindow):
             # clean cache for temp id
             self.cached_ids.remove(-1)
         new_ids = [i.id for i in self.play_queue]
+        print(os.path.join(self.config['storage'], 'cache'))
         for cached in tuple(self.cached_ids):
             if cached not in new_ids:
                 self.cached_ids.remove(cached)
@@ -934,6 +898,7 @@ class MainWindow(QMainWindow):
                 # if ready to play
                 self.play_track(cur_track)
                 self.awaiting_download = False
+                pd("ad", self.awaiting_download)
 
             # caching
             for i in range(self.queue_pos, min(len(self.play_queue), 1 + self.config["queue_cache"] + self.queue_pos)):
@@ -950,6 +915,7 @@ class MainWindow(QMainWindow):
                             else:
                                 # add play task for current track if it needs to be downloaded
                                 self.awaiting_download = True
+                                pd("ad", self.awaiting_download)
                                 add_to_download_queue(elem, 'play', os.path.join(self.config['storage'], 'cache'), True)
                                 self.next_download_message(True)
                                 self.label_player_title.setText("Downloading...")
@@ -1004,7 +970,7 @@ class MainWindow(QMainWindow):
         """
         Load and apply a new style.
         """
-        self.styles = StyleManager('styles/' + style + '/')
+        self.styles = StyleManager("default-dark")
         self.styles.load_style("style.qss")
         self.styles.load_palette("palette.json")
         self.setStyleSheet(self.styles.style)
@@ -1172,88 +1138,17 @@ class MainWindow(QMainWindow):
         add_widget.truncate(self.search_scroll_area.width())
 
 
-class SetupWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        uic.loadUi('setup.ui', self)
-        # self.setStyleSheet("QWidget{font-family: " + QLabel().font().family() + "}")
-
-        self.local_setup_button.clicked.connect(self.local_setup)
-        self.select_folder_button1.clicked.connect(self.open_folder_dialog)
-        self.local_install_finish.clicked.connect(self.finish_local_setup)
-        self.back_button1.clicked.connect(self.go_to_menu)
-        self.folder_input1.textChanged.connect(self.button_switch1)
-        self.data = dict()
-
-    def local_setup(self):
-        self.pages.setCurrentIndex(1)
-
-    def go_to_menu(self):
-        self.pages.setCurrentIndex(0)
-
-    def open_folder_dialog(self):
-        file = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
-        self.folder_input1.setText(os.path.abspath(file))
-
-    def button_switch1(self):
-        # switch go button during local install
-        self.local_install_finish.setEnabled(os.path.isdir(self.folder_input1.text()))
-        if os.path.isdir(self.folder_input1.text()):
-            self.data["storage"] = self.folder_input1.text()
-
-    def finish_local_setup(self):
-        try:
-            os.mkdir(os.path.join(self.data["storage"], "cache/"))
-            print("Setup done!")
-            self.init_local_db()
-        except PermissionError:
-            dialog = QMessageBox.critical(self, "Error", "No permission to write in selected folder.", QMessageBox.Ok)
-        except FileNotFoundError:
-            dialog = QMessageBox.critical(self, "Error", "Folder seems not present.", QMessageBox.Ok)
-        except FileExistsError:
-            print("Setup done!")
-            self.init_local_db()
-
-    def init_local_db(self):
-        test_db = MusicDatabase(os.path.join(self.data["storage"], "local.db"))
-        try:
-            if test_db.get_playlist(1):
-                print("DB already exists and is valid.")
-                self.close()
-            else:
-                raise sqlite3.OperationalError
-        except sqlite3.OperationalError:
-            print("Creating new db.")
-            try:
-                test_db.create_db_structure()
-                test_db.add_playlist(Playlist(0, "My tracks", description="All saved tracks."))
-                test_db.close()
-            except sqlite3.OperationalError or KeyError or ValueError or IndexError or TypeError:
-                # some error occurred :(
-                dialog = QMessageBox.critical(self, "Error", "Something went wrong. Try cleaning target folder.",
-                                              QMessageBox.Ok)
-                return 0
-        # update config
-        with open("config.json", 'r') as f:
-            cur_config = json.loads(f.read())
-        cur_config["first_run"] = False
-        cur_config["storage"] = self.data["storage"]
-        with open('config.json', 'w') as f:
-            f.write(json.dumps(cur_config))
-        self.close()
-
-
 app = QApplication(sys.argv)
 # check if setup is required
-with open("config.json", 'r') as j:
+with open("../config.json", 'r') as j:
     cfg = json.loads(j.read())
-QtGui.QFontDatabase.addApplicationFont(os.path.join("styles", cfg["theme"], "SFUIText-Light.ttf"))
+QtGui.QFontDatabase.addApplicationFont(os.path.join("../styles", cfg["theme"], "SFUIText-Light.ttf"))
 print(QtGui.QFontDatabase.styleString)
 if cfg["first_run"]:
     ex = SetupWindow()
     ex.show()
     app.exec_()
-    with open("config.json", 'r') as j:
+    with open("../config.json", 'r') as j:
         cfg = json.loads(j.read())
 if not cfg["first_run"]:
     db = MusicDatabase(os.path.join(cfg['storage'], 'local.db'))

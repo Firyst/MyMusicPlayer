@@ -75,6 +75,7 @@ class MusicTrack:
 
         # special system information
         self.temp = None
+        self.upd_func = None
 
     def __getitem__(self, item):
         return self.metadata[item]

@@ -1,8 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 import sys
-sys.path.insert(0,'..')
-from main import MusicTrack, string_to_duration
+sys.path.insert(0, '../..')
+from serendipity.main import MusicTrack, string_to_duration
 
 
 def get_music_list(search_request):

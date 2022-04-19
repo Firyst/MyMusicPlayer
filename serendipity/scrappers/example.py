@@ -5,7 +5,7 @@
 # example is given below
 
 # import MusicTrack type
-from main import MusicTrack
+from serendipity.main import MusicTrack
 
 
 # file should be named as you want it to be shown in the app
