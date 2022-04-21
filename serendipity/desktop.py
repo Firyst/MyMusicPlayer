@@ -346,7 +346,6 @@ class ResultWidget:
         self.add_now.clicked.connect(self.add_to_library)
 
         self.update_icons()
-        self.my_widget.setMaximumHeight(20)
 
     def test_play(self):
         if self.parent.playing_track:
@@ -581,46 +580,37 @@ class MainWindow(QMainWindow):
         menu = QMenu()
         menu.setObjectName("sort_menu")
         act1 = menu.addAction("Default")
-        act1.setFont(font)
         act1.setIcon(self.styles.get_icon("no-sort"))
         menu.addSeparator()
 
         act1 = menu.addAction("Alphabet")
-        # act1.setFont(font)
         act1.setIcon(self.styles.get_icon("sort1"))
 
         act1 = menu.addAction("Alphabet")
-        # act1.setFont(font)
         act1.setIcon(self.styles.get_icon("sort2"))
 
         menu.addSeparator()
 
         act1 = menu.addAction("Created")
-        act1.setFont(font)
         act1.setIcon(self.styles.get_icon("sort1"))
 
         act1 = menu.addAction("Created")
-        act1.setFont(font)
         act1.setIcon(self.styles.get_icon("sort2"))
 
         menu.addSeparator()
 
         act1 = menu.addAction("Tracks")
-        act1.setFont(font)
         act1.setIcon(self.styles.get_icon("sort1"))
 
         act1 = menu.addAction("Tracks")
-        act1.setFont(font)
         act1.setIcon(self.styles.get_icon("sort2"))
 
         menu.addSeparator()
 
         act1 = menu.addAction("Duration")
-        act1.setFont(font)
         act1.setIcon(self.styles.get_icon("sort1"))
 
         act1 = menu.addAction("Duration")
-        act1.setFont(font)
         act1.setIcon(self.styles.get_icon("sort2"))
         menu.setStyleSheet(self.styles.style)
         return menu
@@ -882,6 +872,7 @@ class MainWindow(QMainWindow):
         global download_queue
         if not self.play_queue:
             mixer.music.stop()
+            mixer.music.unload()
             self.time_slider.setEnabled(False)
             self.label_current_time.setText("--:--")
             self.label_duration.setText("--:--")

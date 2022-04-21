@@ -255,7 +255,16 @@
       <property name="currentIndex">
        <number>2</number>
       </property>
+      <property name="elideMode">
+       <enum>Qt::ElideMiddle</enum>
+      </property>
+      <property name="usesScrollButtons">
+       <bool>false</bool>
+      </property>
       <property name="tabsClosable">
+       <bool>false</bool>
+      </property>
+      <property name="tabBarAutoHide">
        <bool>false</bool>
       </property>
       <widget class="QWidget" name="tab_playing">
@@ -348,6 +357,9 @@
         <string>Playlists</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_3">
+        <property name="spacing">
+         <number>5</number>
+        </property>
         <property name="leftMargin">
          <number>5</number>
         </property>
@@ -369,11 +381,26 @@
            </sizepolicy>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_8">
+           <property name="spacing">
+            <number>10</number>
+           </property>
+           <property name="leftMargin">
+            <number>5</number>
+           </property>
+           <property name="topMargin">
+            <number>5</number>
+           </property>
+           <property name="rightMargin">
+            <number>5</number>
+           </property>
            <property name="bottomMargin">
-            <number>12</number>
+            <number>5</number>
            </property>
            <item>
             <layout class="QHBoxLayout" name="playlist_field" stretch="6,1,1">
+             <property name="spacing">
+              <number>5</number>
+             </property>
              <item>
               <widget class="QLineEdit" name="search_request_2">
                <property name="sizePolicy">
@@ -382,11 +409,17 @@
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
                <property name="focusPolicy">
                 <enum>Qt::ClickFocus</enum>
                </property>
                <property name="text">
-                <string>plamenev</string>
+                <string/>
                </property>
                <property name="dragEnabled">
                 <bool>true</bool>
@@ -461,8 +494,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>753</width>
-                <height>299</height>
+                <width>769</width>
+                <height>324</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_2"/>
@@ -526,8 +559,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>230</width>
-                <height>308</height>
+                <width>238</width>
+                <height>322</height>
                </rect>
               </property>
               <property name="layoutDirection">
@@ -549,11 +582,26 @@
            </sizepolicy>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_7">
+           <property name="spacing">
+            <number>10</number>
+           </property>
+           <property name="leftMargin">
+            <number>5</number>
+           </property>
+           <property name="topMargin">
+            <number>5</number>
+           </property>
+           <property name="rightMargin">
+            <number>5</number>
+           </property>
            <property name="bottomMargin">
-            <number>12</number>
+            <number>5</number>
            </property>
            <item>
             <layout class="QHBoxLayout" name="search_field">
+             <property name="spacing">
+              <number>5</number>
+             </property>
              <item>
               <widget class="QLineEdit" name="search_request">
                <property name="sizePolicy">
@@ -561,6 +609,12 @@
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
                </property>
                <property name="focusPolicy">
                 <enum>Qt::ClickFocus</enum>
@@ -619,8 +673,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>487</width>
-                <height>299</height>
+                <width>505</width>
+                <height>324</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout"/>

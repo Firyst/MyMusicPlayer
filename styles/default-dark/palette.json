@@ -4,5 +4,6 @@
   "@light_color": [63, 63, 63],
   "@base_color": [36, 36, 36],
   "@button_color": [45, 45, 45],
-  "@text_color": [222, 222, 222]
+  "@text_color": [222, 222, 222],
+  "@dark_color": [45, 45, 45]
 }
