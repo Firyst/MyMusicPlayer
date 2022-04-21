@@ -98,17 +98,19 @@ def updater(target, delay):
         target()
 
 
-def run_scrapper(req, source_name, scrapper_func, update):
+def run_scrapper(req, source_name, scrapper_func, signal):
     print('running search with ', scrapper_func)
     global result_queue
     result_queue[source_name] = [[], False]
     for r in scrapper_func(req):
         if r is not None:
             result_queue[source_name][0].append(r)
-            update.click()
+            signal.emit()
     result_queue[source_name][1] = True
-    update.click()
+    signal.emit()
 
+class Communication(QtCore.QObject):
+    add_result = QtCore.pyqtSignal()
 
 # noinspection PyUnresolvedReferences
 class PlaylistWidget:
@@ -136,9 +138,10 @@ class PlaylistWidget:
         # self.desc_label.setFont(font)
 
         # track_count
-        self.duration_label = QLabel(str(playlist.get_param('track_count')))
-        self.duration_label.setWordWrap(False)
-        label_layout.addWidget(self.duration_label, 0, 10, 1, 1)
+        self.track_label = QLabel(str(playlist.get_param('track_count')))
+        self.track_label.setWordWrap(False)
+        self.track_label.setToolTip("Track count")
+        label_layout.addWidget(self.track_label, 0, 10, 1, 1)
         # self.duration_label.setFont(font)
 
         # duration
@@ -337,13 +340,13 @@ class ResultWidget:
         self.my_widget = my_widget
 
         self.track = track
-        self.track.upd_func = lambda: self.button_play.setIcon(self.styles.get_icon("pause"))
         self.button_more.clicked.connect(self.view_track_data)
 
         self.add_now = QPushButton()
         self.add_now.clicked.connect(self.add_to_library)
 
         self.update_icons()
+        self.my_widget.setMaximumHeight(20)
 
     def test_play(self):
         if self.parent.playing_track:
@@ -351,8 +354,15 @@ class ResultWidget:
                 # track is playing
                 self.parent.player_pause()
                 return 1
-        self.button_play.setIcon(self.styles.get_icon("update"))
+
         self.parent.set_player_queue(self.track)
+        if self.parent.playing_track and self.parent.playing:
+            if self.parent.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
+                # if track already started playing
+                self.button_play.setIcon(self.styles.get_icon("pause"))
+                return 2
+        # otherwise set update icon
+        self.button_play.setIcon(self.styles.get_icon("update"))
 
     def track_manage(self):
         if self.in_library:
@@ -459,6 +469,7 @@ class QJumpSlider(QSlider):
         super(QJumpSlider, self).__init__(parent)
         self.pressed = False
         self.release_func = None  # function that is called when mouse button is released
+        self.set_value(33)
 
     def set_value(self, value):
         if not self.pressed:
@@ -482,9 +493,17 @@ class QJumpSlider(QSlider):
 class PlaylistView(QWidget):
     def __init__(self, parent):
         super().__init__()
-        uic.loadUi('playlist_view.ui', self)
-        my_font = QFont(parent.search_button.font().family(), parent.search_button.font().pixelSize())
-        self.search_button.setFont(my_font)
+        self.parent = parent
+        uic.loadUi(os.path.join('ui', 'playlist_view.ui'), self)
+        self.set_icons()
+
+    def set_icons(self):
+        self.button_play.setIcon(self.parent.styles.get_icon("play"))
+        self.button_add.setIcon(self.parent.styles.get_icon("add"))
+        self.button_download.setIcon(self.parent.styles.get_icon("download"))
+        self.button_export.setIcon(self.parent.styles.get_icon("export"))
+        self.button_delete.setIcon(self.parent.styles.get_icon("close"))
+        self.button_back.setIcon(self.parent.styles.get_icon("back"))
 
 
 class MainWindow(QMainWindow):
@@ -505,6 +524,8 @@ class MainWindow(QMainWindow):
         self.current_playlists = []
 
         self.window_width = self.width()
+        self.com = Communication()
+        self.com.add_result.connect(self.update_results)
 
         self.cached_ids = set()
         self.playing_track = None
@@ -558,6 +579,7 @@ class MainWindow(QMainWindow):
     def create_playlists_sort_menu(self):
         font = QFont(self.playlists_sort_button.font().family(), self.playlists_sort_button.font().pixelSize())
         menu = QMenu()
+        menu.setObjectName("sort_menu")
         act1 = menu.addAction("Default")
         act1.setFont(font)
         act1.setIcon(self.styles.get_icon("no-sort"))
@@ -600,7 +622,7 @@ class MainWindow(QMainWindow):
         act1 = menu.addAction("Duration")
         act1.setFont(font)
         act1.setIcon(self.styles.get_icon("sort2"))
-
+        menu.setStyleSheet(self.styles.style)
         return menu
 
     def closeEvent(self, event):
@@ -712,8 +734,6 @@ class MainWindow(QMainWindow):
         self.label_player_artist.setText(track.get_param('artist', 'Unknown artist'))
         self.playing_track = track
         self.update_player()
-        if self.playing_track.upd_func:
-            self.playing_track.upd_func()
 
 
     def player_init(self):
@@ -933,6 +953,7 @@ class MainWindow(QMainWindow):
         if all_pl:
             # generate new layout for scroll area
             new_widget = QWidget()
+            new_widget.setObjectName("search_area_content")
             new_widget.setAutoFillBackground(True)
             new_layout = QVBoxLayout()
             new_layout.setAlignment(QtCore.Qt.AlignTop)
@@ -966,15 +987,18 @@ class MainWindow(QMainWindow):
         self.show_properties_button.hide()
         self.properties_button.clicked.connect(self.hide_search_properties)
 
+
+
     def load_styles(self, style):
         """
         Load and apply a new style.
         """
         self.styles = StyleManager("default-dark")
         self.styles.load_style("style.qss")
-        self.styles.load_palette("palette.json")
+        # self.styles.load_palette("palette.json")
+        self.styles.load_colors("palette.json")
         self.setStyleSheet(self.styles.style)
-        self.setPalette(self.styles.palette)
+        # self.setPalette(self.styles.palette)
 
         self.search_button.setIcon(self.styles.get_icon("search"))
         self.properties_button.setIcon(self.styles.get_icon("close"))
@@ -1011,10 +1035,10 @@ class MainWindow(QMainWindow):
                 labels[i].setText(text)
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
-        if self.width() != self.window_width:
-            # custom resize event
-            self.window_width = self.width()
-            self.truncate_all()
+        # if self.width() != self.window_width:
+        # custom resize event
+        self.window_width = self.width()
+        self.truncate_all()
 
     def truncate_all(self):
         """
@@ -1070,6 +1094,7 @@ class MainWindow(QMainWindow):
                 text.setWordWrap(True)
                 data_layout.addWidget(text)
         properties_widget = QWidget()
+        properties_widget.setObjectName("search_area_content")
         data_layout.addStretch(0)
         properties_widget.setLayout(data_layout)
         self.properties_area.setWidget(properties_widget)
@@ -1102,7 +1127,7 @@ class MainWindow(QMainWindow):
             scr = get_scrappers()
             for scrapper in scr:
                 threading.Thread(target=run_scrapper,
-                                 args=(search_text, scrapper, scr[scrapper], self.update_button)).start()
+                                 args=(search_text, scrapper, scr[scrapper], self.com.add_result)).start()
 
     def set_search_label(self, label_text):
         """
@@ -1110,6 +1135,7 @@ class MainWindow(QMainWindow):
         """
         lbl = QLabel(label_text)
         lbl.setAlignment(QtCore.Qt.AlignCenter)
+        lbl.setObjectName("search_area_content")
         self.search_scroll_area.setWidget(lbl)
 
     def add_search_result(self, track):
@@ -1122,7 +1148,7 @@ class MainWindow(QMainWindow):
             new_layout = QVBoxLayout()
             new_layout.setAlignment(QtCore.Qt.AlignTop)
             new_widget.setLayout(new_layout)
-
+            new_widget.setObjectName("search_area_content")
             self.search_scroll_area.setWidget(new_widget)
         widget = self.search_scroll_area.widget()
 

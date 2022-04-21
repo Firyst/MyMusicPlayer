@@ -1,2 +1,24 @@
 gstreamer-devel
 apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-doc gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
+alternate-background-color
+
+  //  "@WindowText": [222, 222, 222, 255],
+//  "@Button": [45, 45, 45, 255],
+//  "@Light": [63, 63, 63, 255],
+//  "@Midlight": [233, 231, 227, 255],
+//  "@Dark": [42, 42, 42, 255],
+//  "@Text": [222, 222, 222, 255],
+//  "@BrightText": [255, 255, 255, 255],
+//  "@ButtonText": [222, 222, 222, 255],
+//  "@Base": [36, 36, 36, 255],
+
+//  "@Shadow": [39, 39, 39, 255],
+//  "@Highlight": [243, 186, 75, 255],
+//  "@HighlightedText": [255, 255, 255, 255],
+//  "@Link": [0, 0, 200, 255],
+//  "@LinkVisited": [200, 0, 200, 255],
+//  "@AlternateBase": [35, 35, 35, 255],
+//  "@NoRole": [0, 0, 0, 255],
+//  "@ToolTipBase": [255, 255, 220, 255],
+//  "@ToolTipText": [222, 222, 222, 255],
+//  "@PlaceholderText": [222, 222, 222, 128],

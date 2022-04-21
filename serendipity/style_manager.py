@@ -40,6 +40,17 @@ class StyleManager:
         with open(os.path.join(self.dir, filename)) as f:
             self.style = self.style + f.read() + '\n'
 
+    def load_colors(self, filename):
+        if self.style:
+            with open(os.path.join(self.dir, filename)) as j:
+                colors = json.loads(j.read())
+                for color_name in colors:
+                    color = tuple(map(str, colors[color_name]))
+                    if len(color) == 4:
+                        self.style = self.style.replace(color_name, f"rgba({', '.join(color)})")
+                    else:
+                        self.style = self.style.replace(color_name, f"rgb({', '.join(color)})")
+
     def load_palette(self, filename):
         """
         Create QPalette from JSON file.
