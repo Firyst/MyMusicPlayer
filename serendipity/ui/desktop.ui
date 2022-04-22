@@ -253,7 +253,7 @@
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>3</number>
       </property>
       <property name="elideMode">
        <enum>Qt::ElideMiddle</enum>
@@ -330,6 +330,56 @@
           <width>113</width>
           <height>28</height>
          </rect>
+        </property>
+       </widget>
+       <widget class="QSlider" name="horizontalSlider">
+        <property name="geometry">
+         <rect>
+          <x>300</x>
+          <y>40</y>
+          <width>160</width>
+          <height>22</height>
+         </rect>
+        </property>
+        <property name="palette">
+         <palette>
+          <active>
+           <colorrole role="Highlight">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>45</red>
+              <green>255</green>
+              <blue>26</blue>
+             </color>
+            </brush>
+           </colorrole>
+          </active>
+          <inactive>
+           <colorrole role="Highlight">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>217</red>
+              <green>0</green>
+              <blue>192</blue>
+             </color>
+            </brush>
+           </colorrole>
+          </inactive>
+          <disabled>
+           <colorrole role="Highlight">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>220</red>
+              <green>220</green>
+              <blue>220</blue>
+             </color>
+            </brush>
+           </colorrole>
+          </disabled>
+         </palette>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
         </property>
        </widget>
       </widget>
@@ -494,8 +544,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>769</width>
-                <height>324</height>
+                <width>767</width>
+                <height>313</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_2"/>
@@ -533,6 +583,18 @@
            </sizepolicy>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">
+           <property name="leftMargin">
+            <number>5</number>
+           </property>
+           <property name="topMargin">
+            <number>5</number>
+           </property>
+           <property name="rightMargin">
+            <number>5</number>
+           </property>
+           <property name="bottomMargin">
+            <number>5</number>
+           </property>
            <item>
             <widget class="QPushButton" name="properties_button">
              <property name="focusPolicy">
@@ -559,7 +621,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>238</width>
+                <width>242</width>
                 <height>322</height>
                </rect>
               </property>
@@ -673,8 +735,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>505</width>
-                <height>324</height>
+                <width>501</width>
+                <height>313</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout"/>

@@ -504,6 +504,9 @@ class PlaylistView(QWidget):
         self.button_delete.setIcon(self.parent.styles.get_icon("close"))
         self.button_back.setIcon(self.parent.styles.get_icon("back"))
 
+        self.label1.font().setBold(True)
+        self.props.setObjectName("scroll_area_content")
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -631,7 +634,7 @@ class MainWindow(QMainWindow):
         self.truncate_all()
 
     def next_download_message(self, new_task):
-        if self.status_bar.currentMessage() == "Ready." or not new_task:
+        if self.status_bar.currentMessage() == "Ready." or self.status_bar.currentMessage() == '' or not new_task:
             if download_queue:
                 track, task_type, _ = download_queue[0]
                 self.sb_msg(f"{STATUSBAR_MESSAGES[task_type]} {track['title']}...")
@@ -977,7 +980,7 @@ class MainWindow(QMainWindow):
         self.show_properties_button.clicked.connect(self.show_search_properties)
         self.show_properties_button.hide()
         self.properties_button.clicked.connect(self.hide_search_properties)
-
+        self.toolButton.clicked.connect(lambda: self.status_bar.showMessage('пошел нахуй'))
 
 
     def load_styles(self, style):
