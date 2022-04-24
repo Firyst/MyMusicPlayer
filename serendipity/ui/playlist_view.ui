@@ -15,19 +15,25 @@
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <property name="leftMargin">
-    <number>5</number>
+    <number>10</number>
    </property>
    <property name="topMargin">
-    <number>5</number>
+    <number>10</number>
    </property>
    <property name="rightMargin">
-    <number>5</number>
+    <number>10</number>
    </property>
    <property name="bottomMargin">
-    <number>5</number>
+    <number>10</number>
+   </property>
+   <property name="horizontalSpacing">
+    <number>10</number>
+   </property>
+   <property name="verticalSpacing">
+    <number>0</number>
    </property>
    <item row="0" column="0">
-    <widget class="QScrollArea" name="scrollArea">
+    <widget class="QScrollArea" name="tracks_scroll_area">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
        <horstretch>2</horstretch>
@@ -42,8 +48,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>414</width>
-        <height>470</height>
+        <width>407</width>
+        <height>460</height>
        </rect>
       </property>
      </widget>
@@ -56,6 +62,12 @@
        <horstretch>1</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>225</width>
+       <height>16777215</height>
+      </size>
      </property>
      <property name="currentIndex">
       <number>1</number>
@@ -121,8 +133,8 @@
               <rect>
                <x>0</x>
                <y>0</y>
-               <width>194</width>
-               <height>426</height>
+               <width>98</width>
+               <height>28</height>
               </rect>
              </property>
              <property name="layoutDirection">
@@ -140,7 +152,7 @@
      <widget class="QWidget" name="page_2">
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <property name="spacing">
-        <number>5</number>
+        <number>10</number>
        </property>
        <property name="leftMargin">
         <number>0</number>
@@ -167,18 +179,33 @@
              <height>32</height>
             </size>
            </property>
+           <property name="toolTip">
+            <string>Add whole playlist to play queue.</string>
+           </property>
+           <property name="toolTipDuration">
+            <number>-2</number>
+           </property>
+           <property name="statusTip">
+            <string/>
+           </property>
            <property name="text">
             <string>...</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QToolButton" name="button_add">
+          <widget class="QToolButton" name="button_edit">
            <property name="minimumSize">
             <size>
              <width>32</width>
              <height>32</height>
             </size>
+           </property>
+           <property name="toolTip">
+            <string>Edit playlist tracks: add or delete.</string>
+           </property>
+           <property name="toolTipDuration">
+            <number>-2</number>
            </property>
            <property name="text">
             <string>...</string>
@@ -187,11 +214,20 @@
          </item>
          <item>
           <widget class="QToolButton" name="button_download">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="minimumSize">
             <size>
              <width>32</width>
              <height>32</height>
             </size>
+           </property>
+           <property name="toolTip">
+            <string>Download all tracks into playlist (auto).</string>
+           </property>
+           <property name="toolTipDuration">
+            <number>-2</number>
            </property>
            <property name="text">
             <string>...</string>
@@ -200,11 +236,20 @@
          </item>
          <item>
           <widget class="QToolButton" name="button_export">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="minimumSize">
             <size>
              <width>32</width>
              <height>32</height>
             </size>
+           </property>
+           <property name="toolTip">
+            <string>Export playlist to file/folder.</string>
+           </property>
+           <property name="toolTipDuration">
+            <number>-2</number>
            </property>
            <property name="text">
             <string>...</string>
@@ -219,6 +264,31 @@
              <height>32</height>
             </size>
            </property>
+           <property name="toolTip">
+            <string>Delete this playlist.</string>
+           </property>
+           <property name="toolTipDuration">
+            <number>-2</number>
+           </property>
+           <property name="text">
+            <string>...</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="button_return">
+           <property name="minimumSize">
+            <size>
+             <width>32</width>
+             <height>32</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Go back.</string>
+           </property>
+           <property name="toolTipDuration">
+            <number>-3</number>
+           </property>
            <property name="text">
             <string>...</string>
            </property>
@@ -227,14 +297,29 @@
         </layout>
        </item>
        <item>
-        <widget class="QLineEdit" name="lineEdit">
+        <widget class="QLineEdit" name="playlist_title">
+         <property name="focusPolicy">
+          <enum>Qt::ClickFocus</enum>
+         </property>
+         <property name="contextMenuPolicy">
+          <enum>Qt::PreventContextMenu</enum>
+         </property>
+         <property name="maxLength">
+          <number>32</number>
+         </property>
          <property name="placeholderText">
-          <string>Playlist name</string>
+          <string>Playlist title</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QPlainTextEdit" name="plainTextEdit">
+        <widget class="QPlainTextEdit" name="playlist_desc">
+         <property name="focusPolicy">
+          <enum>Qt::ClickFocus</enum>
+         </property>
+         <property name="maximumBlockCount">
+          <number>2</number>
+         </property>
          <property name="placeholderText">
           <string>Description</string>
          </property>
@@ -242,24 +327,36 @@
        </item>
        <item>
         <widget class="QWidget" name="props" native="true">
+         <property name="focusPolicy">
+          <enum>Qt::ClickFocus</enum>
+         </property>
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <property name="spacing">
            <number>5</number>
           </property>
           <property name="leftMargin">
-           <number>5</number>
+           <number>10</number>
           </property>
           <property name="topMargin">
-           <number>5</number>
+           <number>10</number>
           </property>
           <property name="rightMargin">
-           <number>5</number>
+           <number>10</number>
           </property>
           <property name="bottomMargin">
-           <number>5</number>
+           <number>10</number>
           </property>
           <item>
            <widget class="QLabel" name="label1">
+            <property name="font">
+             <font>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::ClickFocus</enum>
+            </property>
             <property name="text">
              <string>Tracks:</string>
             </property>
@@ -274,13 +371,19 @@
           </item>
           <item>
            <widget class="QLabel" name="label2">
+            <property name="font">
+             <font>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
             <property name="text">
              <string>Summary length:</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label_3">
+           <widget class="QLabel" name="label_length">
             <property name="text">
              <string>12:34</string>
             </property>
@@ -288,13 +391,19 @@
           </item>
           <item>
            <widget class="QLabel" name="label3">
+            <property name="font">
+             <font>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
             <property name="text">
              <string>Playlist created:</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label_2">
+           <widget class="QLabel" name="label_created">
             <property name="text">
              <string>03.11.1768</string>
             </property>

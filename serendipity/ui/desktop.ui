@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>528</height>
+    <width>1000</width>
+    <height>800</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -20,7 +20,7 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
+   <layout class="QGridLayout" name="gridLayout" rowminimumheight="0,0">
     <property name="leftMargin">
      <number>5</number>
     </property>
@@ -98,6 +98,21 @@
        <item>
         <widget class="QWidget" name="player_middle" native="true">
          <layout class="QVBoxLayout" name="verticalLayout_6">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <item>
            <layout class="QHBoxLayout" name="player_buttons">
             <item>
@@ -200,20 +215,10 @@
            </layout>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="player_time" stretch="1">
+           <layout class="QHBoxLayout" name="player_time">
             <property name="spacing">
              <number>10</number>
             </property>
-            <item>
-             <widget class="QLabel" name="label_current_time">
-              <property name="text">
-               <string>1:12</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-              </property>
-             </widget>
-            </item>
            </layout>
           </item>
          </layout>
@@ -246,6 +251,12 @@
     </item>
     <item row="0" column="0">
      <widget class="QTabWidget" name="tab_widget">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>0</height>
+       </size>
+      </property>
       <property name="tabPosition">
        <enum>QTabWidget::North</enum>
       </property>
@@ -253,7 +264,7 @@
        <enum>QTabWidget::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>3</number>
+       <number>2</number>
       </property>
       <property name="elideMode">
        <enum>Qt::ElideMiddle</enum>
@@ -271,25 +282,6 @@
        <attribute name="title">
         <string>Playing</string>
        </attribute>
-       <widget class="QPushButton" name="testbutton">
-        <property name="geometry">
-         <rect>
-          <x>210</x>
-          <y>110</y>
-          <width>90</width>
-          <height>28</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>PushButton</string>
-        </property>
-        <property name="checkable">
-         <bool>true</bool>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-       </widget>
        <widget class="QToolButton" name="toolButton">
         <property name="geometry">
          <rect>
@@ -382,6 +374,42 @@
          <enum>Qt::Horizontal</enum>
         </property>
        </widget>
+       <widget class="QPushButton" name="debug_button1">
+        <property name="geometry">
+         <rect>
+          <x>60</x>
+          <y>130</y>
+          <width>90</width>
+          <height>28</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>repair timer</string>
+        </property>
+       </widget>
+       <widget class="QTabWidget" name="tabWidget">
+        <property name="geometry">
+         <rect>
+          <x>586</x>
+          <y>220</y>
+          <width>221</width>
+          <height>80</height>
+         </rect>
+        </property>
+        <property name="tabsClosable">
+         <bool>true</bool>
+        </property>
+        <widget class="QWidget" name="tab">
+         <attribute name="title">
+          <string>Tab 1</string>
+         </attribute>
+        </widget>
+        <widget class="QWidget" name="tab_3">
+         <attribute name="title">
+          <string>Tab 2</string>
+         </attribute>
+        </widget>
+       </widget>
       </widget>
       <widget class="QWidget" name="tab_library">
        <attribute name="title">
@@ -423,7 +451,7 @@
          <number>5</number>
         </property>
         <item>
-         <widget class="QWidget" name="search_menu_2" native="true">
+         <widget class="QWidget" name="playlist_menu" native="true">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>2</horstretch>
@@ -544,8 +572,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>767</width>
-                <height>313</height>
+                <width>969</width>
+                <height>597</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_2"/>
@@ -559,9 +587,9 @@
       </widget>
       <widget class="QWidget" name="tab_search">
        <attribute name="title">
-        <string> Search</string>
+        <string>Search</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_4" rowstretch="0" columnstretch="0,0">
+       <layout class="QGridLayout" name="gridLayout_4" rowstretch="0,0" columnstretch="0,0">
         <property name="leftMargin">
          <number>5</number>
         </property>
@@ -574,7 +602,13 @@
         <property name="bottomMargin">
          <number>5</number>
         </property>
-        <item row="0" column="1">
+        <property name="horizontalSpacing">
+         <number>0</number>
+        </property>
+        <property name="verticalSpacing">
+         <number>5</number>
+        </property>
+        <item row="1" column="1">
          <widget class="QWidget" name="search_properties" native="true">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -582,7 +616,16 @@
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
+          <property name="maximumSize">
+           <size>
+            <width>225</width>
+            <height>16777215</height>
+           </size>
+          </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">
+           <property name="spacing">
+            <number>5</number>
+           </property>
            <property name="leftMargin">
             <number>5</number>
            </property>
@@ -607,6 +650,9 @@
            </item>
            <item>
             <widget class="QScrollArea" name="properties_area">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -621,21 +667,37 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>242</width>
-                <height>322</height>
+                <width>213</width>
+                <height>551</height>
                </rect>
               </property>
               <property name="layoutDirection">
                <enum>Qt::LeftToRight</enum>
               </property>
-              <layout class="QVBoxLayout" name="verticalLayout_9"/>
+              <layout class="QVBoxLayout" name="verticalLayout_9">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
+              </layout>
              </widget>
             </widget>
            </item>
           </layout>
          </widget>
         </item>
-        <item row="0" column="0">
+        <item row="1" column="0">
          <widget class="QWidget" name="search_menu" native="true">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -643,7 +705,7 @@
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_7">
+          <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0">
            <property name="spacing">
             <number>10</number>
            </property>
@@ -660,7 +722,7 @@
             <number>5</number>
            </property>
            <item>
-            <layout class="QHBoxLayout" name="search_field">
+            <layout class="QHBoxLayout" name="search_field" stretch="6,1,1">
              <property name="spacing">
               <number>5</number>
              </property>
@@ -698,7 +760,7 @@
              <item>
               <widget class="QPushButton" name="search_button">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
@@ -714,6 +776,16 @@
                </property>
                <property name="text">
                 <string> Search</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="search_filter_button">
+               <property name="focusPolicy">
+                <enum>Qt::NoFocus</enum>
+               </property>
+               <property name="text">
+                <string>Filters</string>
                </property>
               </widget>
              </item>
@@ -735,12 +807,84 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>501</width>
-                <height>313</height>
+                <width>744</width>
+                <height>544</height>
                </rect>
               </property>
-              <layout class="QVBoxLayout" name="verticalLayout"/>
+              <layout class="QVBoxLayout" name="verticalLayout">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
+              </layout>
              </widget>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="0" column="0" colspan="2">
+         <widget class="QWidget" name="warning_widget_frame" native="true">
+          <layout class="QVBoxLayout" name="drhdh">
+           <property name="leftMargin">
+            <number>5</number>
+           </property>
+           <property name="topMargin">
+            <number>5</number>
+           </property>
+           <property name="rightMargin">
+            <number>5</number>
+           </property>
+           <property name="bottomMargin">
+            <number>5</number>
+           </property>
+           <item>
+            <widget class="QWidget" name="warning_widget" native="true">
+             <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="10,0">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <property name="leftMargin">
+               <number>5</number>
+              </property>
+              <property name="topMargin">
+               <number>5</number>
+              </property>
+              <property name="rightMargin">
+               <number>5</number>
+              </property>
+              <property name="bottomMargin">
+               <number>5</number>
+              </property>
+              <item>
+               <widget class="QLabel" name="label_editing_playlist">
+                <property name="text">
+                 <string>Editing playlist</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="button_edit_finish">
+                <property name="focusPolicy">
+                 <enum>Qt::NoFocus</enum>
+                </property>
+                <property name="text">
+                 <string>Save</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
           </layout>
@@ -748,7 +892,7 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_2">
+      <widget class="QWidget" name="tab_settings">
        <attribute name="title">
         <string>Settings</string>
        </attribute>

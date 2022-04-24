@@ -1,27 +1,32 @@
 
 QWidget
 {
-font-family: "SF UI Text";
-font-size: 13px;
+font-family: "Inter";
+font-size: 11pt;
 }
 
 
 
 QWidget#search_area_content, QWidget#scroll_area_content
 {
-background-color: @window_color;
-border-radius: 10px;
+    background-color: @window_color;
+    border-radius: 10px;
 }
 
 QWidget#player_widget
 {
-background-color: @window_color;
-color: @my_color;
+    background-color: @window_color;
+    color: @my_color;
 }
 
 QMainWindow
 {
-background-color: @window_color;
+    background: @window_color;
+}
+
+QDialog
+{
+    background: @base_color;
 }
 
 QLabel
@@ -44,13 +49,19 @@ QWidget#Result-background:hover
     border-radius: 10px;
 }
 
-QLineEdit, QPlainTextEdit
+QLineEdit, QPlainTextEdit, QComboBox
 {
     border: 4px solid @window_color;
     background-color: @window_color;
     color: @text_color;
     border-radius: 10px;
     padding: 1px;
+}
+
+QComboBox::drop-down
+{
+    width: 0px;
+
 }
 
 QLineEdit:focus
@@ -81,6 +92,12 @@ QToolButton:pressed
     border: 5px solid rgba(0, 0, 0, 0);
     border-radius: 10px;
     background-color: rgb(58, 58, 58);
+}
+
+QToolButton#small_button
+{
+    border-radius: 8px;
+    margin: -2px;
 }
 
 QPushButton {
@@ -127,6 +144,7 @@ QTabWidget::pane {
     color: @text_color;
     border: 1px solid @base_color;
     border-radius: 10px;
+    border-top-left-radius: 0px;
     top:-1px;
     background: @base_color;
     margin-right: 8px;
@@ -134,8 +152,9 @@ QTabWidget::pane {
 }
 
 QTabWidget::tab-bar {
-    alignment: center;
+    alignment: left;
 }
+
 
 
 QTabBar::tab {
@@ -145,8 +164,10 @@ QTabBar::tab {
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
     margin-top: 5px;
-    margin-bottom: 1px;
-    padding: 8px;
+    margin: 1px;
+    margin-left: 8px;
+
+    padding: 7px;
 }
 
 QTabBar::tab:selected {
@@ -154,6 +175,10 @@ QTabBar::tab:selected {
     border: 1px solid @base_color;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
+}
+
+QTabBar::tab:hover#Playlists {
+    background: rgb(200, 0, 0);
 }
 
 QMenu {
@@ -202,12 +227,13 @@ QScrollBar::handle
     background: @dark_color;
 }
 
-QScrollBar::add-line {
+QScrollBar::add-line, QScrollBar::add-page, QScrollBar::sub-line, QScrollBar::sub-page {
       border: none;
-      background: none;
+      background: @light_color;
 }
 
-QScrollBar::sub-line {
-      border: none;
-      background: none;
+QWidget#warning_widget
+{
+    background: rgb(160, 100, 0);
+    border-radius: 10px;
 }

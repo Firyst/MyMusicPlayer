@@ -80,6 +80,12 @@ class MusicTrack:
     def __getitem__(self, item):
         return self.metadata[item]
 
+    def __eq__(self, other):
+        if self.get_param("file_hash") and other.get_param("file_hash"):
+            return self.get_param("file_hash") == other.get_param("file_hash")
+        else:
+            return self.file_link == other.file_link
+
     def get_param(self, keyword, empty_value=None):
         """returns parameter if present, else empty_value"""
         return self.metadata.get(keyword, empty_value)
@@ -100,29 +106,32 @@ class MusicTrack:
                 self.metadata[kw] = int(self.metadata[kw])
 
     def __repr__(self):
-        return f"MusicTrack({self.id}, {self.file_path}, {self.file_hash}, {self.is_local}, {self.metadata})"
+        return f"MusicTrack({self.id} {self.metadata['title']})"
 
     def metadata_from_file(self):
         """
         Get metadata from file.
         """
         file = (mp3.Mp3AudioFile(self.file_path))
-        if 'artist' not in self.metadata and file.tag.artist:
-            self.metadata['artist'] = file.tag.artist
-        if 'title' not in self.metadata and file.tag.title:
-            self.metadata['title'] = file.tag.title
-        if 'album' not in self.metadata and file.tag.album:
-            self.metadata['album'] = file.tag.album
-        if 'genre' not in self.metadata and file.tag.genre:
-            self.metadata['genre'] = file.tag.genre
-        if 'discnumber' not in self.metadata and file.tag.disc_num != (None, None):
-            self.metadata['discnumber'] = file.tag.disc_num
-        if 'tracknumber' not in self.metadata and file.tag.track_num != (None, None):
-            self.metadata['tracknumber'] = file.tag.track_num
-        if 'date' not in self.metadata and file.tag.release_date:
-            self.metadata['date'] = file.tag.release_date
-        self.metadata['duration'] = int(file.info.time_secs)
-        self.metadata['bitrate'] = file.info.bit_rate[1]
+        try:
+            if 'artist' not in self.metadata and file.tag.artist:
+                self.metadata['artist'] = file.tag.artist
+            if 'title' not in self.metadata and file.tag.title:
+                self.metadata['title'] = file.tag.title
+            if 'album' not in self.metadata and file.tag.album:
+                self.metadata['album'] = file.tag.album
+            if 'genre' not in self.metadata and file.tag.genre:
+                self.metadata['genre'] = file.tag.genre
+            if 'discnumber' not in self.metadata and file.tag.disc_num != (None, None):
+                self.metadata['discnumber'] = file.tag.disc_num
+            if 'tracknumber' not in self.metadata and file.tag.track_num != (None, None):
+                self.metadata['tracknumber'] = file.tag.track_num
+            if 'date' not in self.metadata and file.tag.release_date:
+                self.metadata['date'] = file.tag.release_date
+            self.metadata['duration'] = int(file.info.time_secs)
+            self.metadata['bitrate'] = file.info.bit_rate[1]
+        except AttributeError:
+            pass
         self.metadata['file_size'] = os.path.getsize(self.file_path)
         self.metadata['file_hash'] = md5(self.file_path)
 
@@ -165,6 +174,13 @@ class Playlist:
         """adds track to playlist"""
         if isinstance(track, MusicTrack):
             self.tracks.append(track)
+        else:
+            raise ValueError("Attempt to add something but not a MusicTrack")
+
+    def remove_track(self, track):
+        """safely removes track"""
+        if isinstance(track, MusicTrack):
+            self.tracks.remove(track)
         else:
             raise ValueError("Attempt to add something but not a MusicTrack")
 

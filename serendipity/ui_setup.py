@@ -4,7 +4,7 @@ Setup window for desktop installation
 
 
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QMessageBox
-from serendipity.main import Playlist
+from main import Playlist
 from database_operator import MusicDatabase
 from PyQt5 import uic
 import os

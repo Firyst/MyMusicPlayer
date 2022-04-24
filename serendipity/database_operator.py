@@ -2,7 +2,7 @@
 
 import sqlite3
 import time
-from serendipity.main import MusicTrack, Playlist, md5
+from main import MusicTrack, Playlist, md5
 import json
 import os
 
@@ -81,7 +81,8 @@ class MusicDatabase:
         if exact_search:
             req = req + ' AND '.join(map(lambda x: f'{x}="{kwargs[x]}"', kwargs.keys()))
         else:
-            req = req + ' AND '.join(map(lambda x: f'{x} LIKE "%{kwargs[x]}%"', kwargs.keys()))
+            req = req + ' AND '.join(map(lambda x: f'{x} COLLATE UTF8_GENERAL_CI LIKE "%{kwargs[x]}%"', kwargs.keys()))
+
         return list(map(lambda x: x[0], self.exec_r(req)))
 
     def add_track(self, track, override_id='NULL', add_time=0):
@@ -184,7 +185,6 @@ class MusicDatabase:
             else:
                 req = req + ' AND '.join(map(lambda x: f'{x} LIKE "%{kwargs[x]}%"', kwargs.keys()))
 
-        print(req)
         return list(map(lambda x: x[0], self.exec_r(req)))
 
     def update_playlist(self, update_id, updated_playlist):

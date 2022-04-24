@@ -33,6 +33,12 @@ class StyleManager:
             self.load_icons([name])
         return self.icons[name]
 
+    def get_pixmap(self, name):
+        """
+        Loads a picture and return QPixmap object.
+        """
+        return QPixmap(os.path.join(self.dir, name))
+
     def load_style(self, filename):
         """
         Just read a QSS file.
