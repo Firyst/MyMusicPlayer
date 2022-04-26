@@ -715,6 +715,49 @@ class ResultWidget:
                 else:
                     labels[i].setText(text)
 
+
+class SerendipityPlayer:
+    """
+    All player queue management.
+    """
+    def __init__(self, update_func, player_widget):
+        mixer.init()
+        self.upd = update_func
+        self.widget = player_widget
+
+        self.queue_pos = -1
+        self.queue = None
+        self.history = None
+
+        self.paused = True  # track is paused
+        self.loaded = False  # track is loaded and ready to play
+        self.playing_track = None
+        self.playing_list = None
+
+        self.repeat = False
+        self.shuffle = False
+
+    def update_config(self, config):
+        self.repeat = config["repeat"]
+        self.shuffle = config["shuffle"]
+
+    def current_pos(self):
+        return mixer.music.get_pos()
+
+    def reset_queue(self, track, playlist):
+        if playlist is None:
+            pass
+
+    def rewind(self, secs):
+        if self.playing_track:
+            mixer.music.stop()
+            mixer.music.play(0, (secs * self.playing_track['duration']) // 1000)
+            if self.paused:
+                mixer.music.pause()
+            self.play_start = secs * self.playing_track['duration']
+            self.widget.update_pos()
+
+
 class PlaylistView(QWidget):
     def __init__(self, parent, playlist, new_playlist=False):
         super().__init__()
@@ -763,7 +806,7 @@ class PlaylistView(QWidget):
 
         self.playlist_title.editingFinished.connect(self.update_playlist)
         self.playlist_title.returnPressed.connect(self.update_playlist)
-        self.button_edit.clicked.connect(lambda: self.parent.activate_playlist_edit(self))
+        self.button_edit.clicked.connect(self.edit_playlist)
         self.button_delete.clicked.connect(self.delete_playlist)
 
     def set_return_function(self, function):
@@ -843,6 +886,11 @@ class PlaylistView(QWidget):
                 db.update_playlist(self.playlist.id, self.playlist)
             self.update_playlist_label()
             self.parent.update_all_playlists()
+
+    def edit_playlist(self):
+        if self.new:
+            self.update_playlist()
+        self.parent.activate_playlist_edit(self)
 
     def delete_playlist(self):
         dialog = MyQuestionDialog(self,
@@ -932,6 +980,7 @@ class MainWindow(QMainWindow):
         self.playlist_search_set()
         self.create_search_filter_menu()
         self.finish_playlist_edit()
+        self.setWindowTitle("Serendipity")
 
         # setup services
         self.dl_thread = threading.Thread(target=downloader, args=[self.download_finish])
