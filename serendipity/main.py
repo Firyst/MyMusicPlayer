@@ -74,7 +74,7 @@ class MusicTrack:
                                 f' Available types are:\n{", ".join(known_keywords)}')
 
         # special system information
-        self.temp = None
+        self.com = None
         self.upd_func = None
 
     def __getitem__(self, item):

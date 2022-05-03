@@ -1,4 +1,5 @@
 import time
+import random
 from PyQt5 import uic, QtGui, QtCore
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QLabel, QPushButton, QVBoxLayout, \
     QSizePolicy, QToolButton, QStyle, QSlider, QMenu, QTabBar, QAction
@@ -140,7 +141,16 @@ def get_saved_tracks(folder):
 
 
 class Communication(QtCore.QObject):
+    """
+    Collection of everywhere used signals.
+    """
     add_result = QtCore.pyqtSignal()
+    update = QtCore.pyqtSignal()
+
+    # track widget signals
+    track_add = QtCore.pyqtSignal()
+    track_update = QtCore.pyqtSignal()
+
 
 
 # noinspection PyUnresolvedReferences
@@ -282,8 +292,8 @@ class TrackWidget:
             else:
                 self.button_download.setIcon(styles.get_icon("download"))
             # play icon
-            if self.parent.playing_track and self.parent.playing:
-                if self.parent.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
+            if self.parent.player.playing_track and self.parent.playing:
+                if self.parent.player.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
                     # track is playing
                     self.button_play.setIcon(styles.get_icon("pause"))
                     return 1
@@ -499,6 +509,7 @@ class ResultWidget:
         self.parent = parent
         self.in_library = False
         self.playlist = target_playlist
+        self.com = Communication()
 
         # check if added
         track_id = db.find_track(True, file_link=track.file_link)
@@ -557,6 +568,7 @@ class ResultWidget:
         self.button_more.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.button_more.setMinimumSize(32, 32)
         self.button_more.setObjectName("more_button")
+        self.button_more.clicked.connect(self.view_track_data)
 
         label_layout.addWidget(self.button_add, 0, 0, 1, 1)
         label_layout.addWidget(self.button_play, 0, 1, 1, 1)
@@ -564,25 +576,25 @@ class ResultWidget:
 
         self.my_widget = my_widget
 
-        track.upd_func = self.update_icons
+        # bind signals
+        self.com.track_add = self.add_to_library
+        self.com.track_update = self.update_icons
+        track.com = self.com
+
         self.track = track
-        self.button_more.clicked.connect(self.view_track_data)
-
-        self.add_now = QPushButton()
-        self.add_now.clicked.connect(self.add_to_library)
-
         self.update_icons()
 
+
     def test_play(self):
-        if self.parent.playing_track:
-            if self.parent.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
+        if self.parent.player.playing_track:
+            if self.parent.player.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
                 # track is playing
-                self.parent.player_pause()
+                self.parent.player.pause()
                 return 1
 
-        self.parent.set_player_queue(self.track)
-        if self.parent.playing_track and self.parent.playing:
-            if self.parent.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
+        self.parent.player.reset_queue(self.track, None)
+        if self.parent.player.playing_track and self.parent.playing:
+            if self.parent.player.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
                 # if track already started playing
                 self.button_play.setIcon(styles.get_icon("pause"))
                 return 2
@@ -659,7 +671,7 @@ class ResultWidget:
                 self.button_add.setIcon(styles.get_icon("add"))
 
             # play icon
-            if self.parent.playing_track and self.parent.playing:
+            if self.parent.player.playing_track and not self.parent.player.paused:
                 if self.parent.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
                     # track is playing
                     self.button_play.setIcon(styles.get_icon("pause"))
@@ -716,37 +728,169 @@ class ResultWidget:
                     labels[i].setText(text)
 
 
+class Config:
+    def __init__(self):
+        pass
+
+    def __getattr__(self, item):
+        with open('../config.json', 'r') as f:
+            data = json.loads(f.read())
+        return data[item]
+
+    def __setattr__(self, key, value):
+        with open('../config.json', 'r') as f:
+            data = json.loads(f.read())
+        data[key] = value
+        with open("../config.json", 'w') as f:
+            f.write(json.dumps(data))
+
+
 class SerendipityPlayer:
     """
     All player queue management.
     """
-    def __init__(self, update_func, player_widget):
+    def __init__(self, parent, player_widget, cache_path):
         mixer.init()
-        self.upd = update_func
+        self.parent = parent
         self.widget = player_widget
+
+        self.cache_path = cache_path
 
         self.queue_pos = -1
         self.queue = None
-        self.history = None
+        self.history = []
 
         self.paused = True  # track is paused
         self.loaded = False  # track is loaded and ready to play
         self.playing_track = None
         self.playing_list = None
+        self.play_start = 0  # where to start play, used for rewinding
 
         self.repeat = False
         self.shuffle = False
 
-    def update_config(self, config):
-        self.repeat = config["repeat"]
-        self.shuffle = config["shuffle"]
+        # self.update_widget()
 
+    def update_config(self):
+        self.repeat = config.repeat
+        self.shuffle = config.shuffle
+
+    @property
     def current_pos(self):
         return mixer.music.get_pos()
 
-    def reset_queue(self, track, playlist):
+    def update_pos(self):
+        if self.playing_track:
+            if mixer.music.get_pos() == -1:
+                self.next()
+                pd("Player: finished, next!")
+                return 0
+            pos = mixer.music.get_pos() + self.play_start
+            self.widget.time_slider.set_value(int(pos / self.playing_track['duration']))
+            self.widget.label_current_time.setText(duration_to_string(pos // 1000))
+
+    def download_finish_event(self, downloaded_track, task_type, folder):
+        """
+        Is called when download of track finishes.
+        """
+        global download_queue
+
+        # check if no new "play" tasks appeared
+        for i, queue_elem in enumerate(download_queue):
+            if i > 0 and queue_elem[1] == 'play':
+                download_queue.remove(queue_elem)
+
+        if downloaded_track.id == 0:
+            # if track is going to be added
+            downloaded_track.file_path = os.path.join(folder, '0.mp3')  # set file
+            downloaded_track.metadata_from_file()  # read metadata
+            downloaded_track.file_path = ''
+
+            self.parent.update_search_properties()
+
+            if task_type == 'add':
+                downloaded_track.com.track_add.emit()
+
+        elif downloaded_track.id == -1:
+            # if track is temporary (play without queue)
+            downloaded_track.file_path = os.path.join(folder, '-1.mp3')  # set file
+            downloaded_track.metadata_from_file()  # read metadata
+            downloaded_track.file_path = ''
+
+            self.parent.update_search_properties()
+
+        if 'play' not in [t[1] for t in download_queue] and task_type == 'play':
+            # play now
+            self.play_track(downloaded_track)
+
+        if downloaded_track.upd_func is not None:
+            downloaded_track.com.track_update.emit()
+
+    def reset_queue(self, track: MusicTrack, playlist: Playlist):
+        self.stop()
         if playlist is None:
-            pass
+            self.queue = [track]
+        else:
+            self.queue = playlist.tracks
+            while self.queue[0] != track:
+                self.queue.append(self.queue.pop(0))
+        self.next()
+
+    def play_track(self, track: MusicTrack):
+        cached_ids = set(get_saved_tracks(self.cache_path))
+        if track.id in cached_ids:
+            mixer.music.stop()
+            mixer.music.unload()
+            if track.file_path:
+                # track is downloaded
+                mixer.music.load(track.file_path)
+            else:
+                # play cached
+                try:
+                    mixer.music.load(os.path.join(self.cache_path, f"{track.id}.mp3"))
+                    pd("Player: playing", track)
+                except FileNotFoundError:
+                    pd("Player: CRITICAL ERROR:", track, " is not cached for some reason")
+                    return -1
+
+        self.loaded = True
+        self.paused = False
+        self.playing_track = track
+        self.update_widget()
+
+    def next(self):
+        if self.queue:
+            self.queue_pos += 1
+            if self.queue_pos >= len(self.queue):
+                self.queue_pos = 0
+
+            # clean "play" tasks from queue
+            if len(download_queue) > 1:
+                while download_queue[1][1] == 'play':
+                    download_queue.pop(1)
+
+
+            # get cached ids
+            cached_ids = set(get_saved_tracks(self.cache_path))
+            next_track = self.queue[self.queue_pos]
+
+            self.playing_track = next_track
+
+            if next_track.file_path:
+                self.loaded = True
+                self.play_track(next_track)
+            if next_track.id not in cached_ids:
+                # track isn't loaded
+                add_to_download_queue(next_track, 'play', self.cache_path, True)
+                self.paused = True
+                self.loaded = False
+            self.update_widget()
+
+    def stop(self):
+        mixer.music.stop()
+        mixer.music.unload()
+        self.playing_track = None
+        self.loaded = False
 
     def rewind(self, secs):
         if self.playing_track:
@@ -756,6 +900,43 @@ class SerendipityPlayer:
                 mixer.music.pause()
             self.play_start = secs * self.playing_track['duration']
             self.widget.update_pos()
+
+    def pause(self):
+        if self.playing_track and self.loaded:
+            if self.paused:
+                mixer.music.unpause()
+                self.paused = False
+            else:
+                mixer.music.pause()
+                self.paused = True
+            self.update_widget()
+
+    def update_widget(self):
+        self.parent.truncate_all()
+        if config.shuffle:
+            self.parent.player_button_shuffle.setIcon(styles.get_icon("shuffle"))
+        else:
+            self.parent.player_button_shuffle.setIcon(styles.get_icon("no-shuffle"))
+
+        if self.loaded:
+            if self.paused:
+                self.parent.player_button_play.setIcon(styles.get_icon('play'))
+            else:
+                self.parent.player_button_play.setIcon(styles.get_icon('pause'))
+        else:
+            if self.playing_track:
+                self.parent.player_button_play.setIcon(styles.get_icon('update'))
+            else:
+                self.parent.player_button_play.setIcon(styles.get_icon('play'))
+
+        if config.repeat:
+            self.parent.player_button_repeat.setIcon(styles.get_icon("repeat"))
+        else:
+            self.parent.player_button_repeat.setIcon(styles.get_icon("no-repeat"))
+
+        if self.playing_track:
+            if self.playing_track.com:
+                self.playing_track.com.track_update.emit()
 
 
 class PlaylistView(QWidget):
@@ -946,12 +1127,6 @@ class MainWindow(QMainWindow):
         self.com = Communication()
         self.com.add_result.connect(self.update_results)
 
-        self.playing_track = None  # playing MusicTrack object
-        self.playing = False  # pause/unpause
-        self.play_queue = []  # default play queue
-        self.play_start = 0  # player start pos
-        self.awaiting_download = False  # is current track downloading
-        self.queue_pos = -1  # current queue position
         self.library_properties_track = None  # track shown in properties
         self.search_properties_track = None  # same
 
@@ -959,6 +1134,7 @@ class MainWindow(QMainWindow):
 
         # setup UI
         uic.loadUi(os.path.join('ui', 'desktop.ui'), self)
+        self.player = SerendipityPlayer(self, self.player_widget, os.path.join(config.storage, 'cache'))
         self.tabs = [self.tab_playing, self.tab_library, self.tab_playing, self.tab_search, self.tab_settings]
         self.set_search_label('Nothing here yet...')
         self.buttons_init()
@@ -986,7 +1162,7 @@ class MainWindow(QMainWindow):
         self.dl_thread = threading.Thread(target=downloader, args=[self.download_finish])
         downloader_on = True
         self.dl_thread.start()
-        self.upd_thread = threading.Thread(target=updater, args=(self.update_pos, 0.25))
+        self.upd_thread = threading.Thread(target=updater, args=(self.player.update_pos, 0.25))
         self.upd_thread.start()
 
         # create context menu for sort button
@@ -995,7 +1171,6 @@ class MainWindow(QMainWindow):
         self.reload_playlists(None)
 
         self.used_font_family = self.label.font().family()
-
         # temp
         self.debug_button1.clicked.connect(self.test)
         self.tab_widget.tabBar().setTabButton(0, QTabBar.RightSide, None)
@@ -1051,20 +1226,22 @@ class MainWindow(QMainWindow):
     def create_search_filter_menu(self):
         menu = QMyMenu()
 
-        def update_options(value, field):
-            self.config[field] = value
-            self.save_config()
-
         menu.setObjectName("sort_menu")
         act1 = menu.addAction("Search saved")
         act1.setCheckable(True)
-        act1.setChecked(self.config["local_search"])
-        act1.changed.connect(lambda: update_options(act1.isChecked(), "local_search"))
+        act1.setChecked(config.local_search)
+
+        def temp1():
+            config.local_search = act1.isChecked()
+        act1.changed.connect(temp1)
 
         act2 = menu.addAction("Search online")
         act2.setCheckable(True)
-        act2.setChecked(self.config["online_search"])
-        act2.changed.connect(lambda: update_options(act2.isChecked(), "online_search"))
+        act2.setChecked(config.online_search)
+
+        def temp2():
+            config.online_search = act2.isChecked()
+        act2.changed.connect(temp2)
 
         # act1.setIcon(styles.get_icon("no-sort"))
         menu.setStyleSheet(styles.style)
@@ -1210,8 +1387,8 @@ class MainWindow(QMainWindow):
         self.player_button_prev.setIcon(styles.get_icon("prev"))
         self.player_button_next.setIcon(styles.get_icon("next"))
 
-        self.player_button_play.clicked.connect(self.player_pause)
-        self.player_button_next.clicked.connect(self.play_next)
+        self.player_button_play.clicked.connect(self.player.pause)
+        self.player_button_next.clicked.connect(self.player.next)
         self.player_button_shuffle.clicked.connect(self.player_shuffle)
         self.player_button_repeat.clicked.connect(self.player_repeat)
 
@@ -1220,34 +1397,36 @@ class MainWindow(QMainWindow):
         self.volume_slider.setValue(int(self.config['volume'] * 100))
         self.change_volume()
         self.time_slider.setMaximum(1000)
-        self.time_slider.release_func = self.player_rewind
+        # self.time_slider.release_func = self.player_rewind
         self.volume_slider.valueChanged.connect(self.change_volume)
 
         self.update_player()
-        self.play_next()
+        # self.play_next()
         self.truncate_all()
         self.label_player_title.setText("No Track")
 
+        self.player.update_widget()
+
     def update_player(self):
         self.truncate_all()
-        if self.config['shuffle']:
-            self.player_button_shuffle.setIcon(styles.get_icon("shuffle"))
-        else:
-            self.player_button_shuffle.setIcon(styles.get_icon("no-shuffle"))
-
-        if self.playing:
-            self.player_button_play.setIcon(styles.get_icon("pause"))
-        else:
-            self.player_button_play.setIcon(styles.get_icon("play"))
-
-        if self.config['repeat']:
-            self.player_button_repeat.setIcon(styles.get_icon("repeat"))
-        else:
-            self.player_button_repeat.setIcon(styles.get_icon("no-repeat"))
-
-        if self.playing_track:
-            if self.playing_track.upd_func:
-                self.playing_track.upd_func()
+        # if self.config['shuffle']:
+        #     self.player_button_shuffle.setIcon(styles.get_icon("shuffle"))
+        # else:
+        #     self.player_button_shuffle.setIcon(styles.get_icon("no-shuffle"))
+#
+        # if self.playing:
+        #     self.player_button_play.setIcon(styles.get_icon("pause"))
+        # else:
+        #     self.player_button_play.setIcon(styles.get_icon("play"))
+#
+        # if self.config['repeat']:
+        #     self.player_button_repeat.setIcon(styles.get_icon("repeat"))
+        # else:
+        #     self.player_button_repeat.setIcon(styles.get_icon("no-repeat"))
+#
+        # if self.playing_track:
+        #     if self.playing_track.upd_func:
+        #         self.playing_track.upd_func()
 
     def player_pause(self):
         if self.playing_track:
@@ -1260,12 +1439,12 @@ class MainWindow(QMainWindow):
             self.update_player()
 
     def player_repeat(self):
-        self.config['repeat'] = not self.config['repeat']
+        config.repeat = not config.repeat
         self.update_player()
         self.save_config()
 
     def player_shuffle(self):
-        self.config['shuffle'] = not self.config['shuffle']
+        config.shuffle = not config.shuffle
         self.update_player()
         self.save_config()
 
@@ -1277,19 +1456,6 @@ class MainWindow(QMainWindow):
                 mixer.music.pause()
             self.play_start = slider.value() * self.playing_track['duration']
             self.update_pos()
-
-    def update_pos(self):
-        """
-        Tick function.
-        """
-        if self.playing_track:
-            if mixer.music.get_pos() == -1:
-                self.play_next()
-                pd("Player: finished, next!")
-                return 0
-            pos = mixer.music.get_pos() + self.play_start
-            self.time_slider.set_value(int(pos / self.playing_track['duration']))
-            self.label_current_time.setText(duration_to_string(pos // 1000))
 
     def change_volume(self):
         """
@@ -1563,13 +1729,13 @@ class MainWindow(QMainWindow):
 
     def player_truncate(self, metrics):
         # truncate player labels
-
+        return 0
         labels = [self.label_player_title, self.label_player_artist]
-        if self.playing_track:
+        if self.player.playing_track:
             texts = [self.playing_track.get_param('title', 'Unnamed'),
                      self.playing_track.get_param('artist', 'Unknown artist')]
         else:
-            if self.awaiting_download:
+            if not self.player.loaded:
                 texts = ["Loading...", "-"]
             else:
                 texts = ["No track", '-']
@@ -1624,6 +1790,17 @@ class MainWindow(QMainWindow):
         self.search_properties.hide()
         self.search_properties_track = None
         self.truncate_all()
+
+    def update_search_properties(self, new_track):
+        """
+        Update track on the right-side properties menu.
+        """
+        # check if something is already viewed
+        if self.search_properties_track:
+            if new_track.file_link == self.search_properties_track.file_link:
+                # if new data gained, replace now
+                self.search_properties_track = new_track
+                self.show_properties_button.click()
 
     def show_search_properties(self):
         """
@@ -1763,21 +1940,19 @@ def load_fonts_from_dir(directory):
 
 app = QApplication(sys.argv)
 # check if setup is required
-with open("../config.json", 'r') as j:
-    cfg = json.loads(j.read())
+config = Config()
 
-print(load_fonts_from_dir(os.path.join("../styles", cfg["theme"])))
-styles = StyleManager(cfg["theme"])
+QtGui.QFontDatabase.addApplicationFont(os.path.join('..', 'styles', config.theme, 'font0.ttf'))
+styles = StyleManager(config.theme)
 
-if cfg["first_run"]:
+if config.first_run:
     ex = SetupWindow()
     ex.show()
     app.exec_()
-    with open("../config.json", 'r') as j:
-        cfg = json.loads(j.read())
-if not cfg["first_run"]:
-    db = MusicDatabase(os.path.join(cfg['storage'], 'local.db'))
+if not config.first_run:
+    db = MusicDatabase(os.path.join(config.storage, 'local.db'))
     ex = MainWindow()
     ex.show()
     app.exec_()
     db.close()
+
