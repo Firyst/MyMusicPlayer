@@ -92,7 +92,7 @@ def downloader(message_func=None):
                 pd("Download_manager: task is already completed, going next")
                 if message_func:
                     message_func(task, task_type, folder)
-                    time.sleep(0.01)
+                    time.sleep(0.001)
                 continue
             try:
                 file = requests.get(task.file_link)
@@ -235,7 +235,7 @@ class TrackWidget:
                 self.parent.player_pause()
                 return 1
 
-        self.parent.set_player_queue(self.track)
+        self.parent.player.reset_queue(self.track)
         if self.parent.playing_track and self.parent.playing:
             if self.parent.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
                 # if track already started playing
@@ -577,8 +577,8 @@ class ResultWidget:
         self.my_widget = my_widget
 
         # bind signals
-        self.com.track_add = self.add_to_library
-        self.com.track_update = self.update_icons
+        self.com.track_add.connect(self.add_to_library)
+        self.com.track_update.connect(self.update_icons)
         track.com = self.com
 
         self.track = track
@@ -593,7 +593,7 @@ class ResultWidget:
                 return 1
 
         self.parent.player.reset_queue(self.track, None)
-        if self.parent.player.playing_track and self.parent.playing:
+        if self.parent.player.playing_track and not self.parent.player.paused:
             if self.parent.player.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
                 # if track already started playing
                 self.button_play.setIcon(styles.get_icon("pause"))
@@ -672,7 +672,7 @@ class ResultWidget:
 
             # play icon
             if self.parent.player.playing_track and not self.parent.player.paused:
-                if self.parent.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
+                if self.parent.player.playing_track.get_param("file_hash", 'NO') == self.track.get_param('file_hash', "XD"):
                     # track is playing
                     self.button_play.setIcon(styles.get_icon("pause"))
                     return 1
@@ -757,7 +757,7 @@ class SerendipityPlayer:
         self.cache_path = cache_path
 
         self.queue_pos = -1
-        self.queue = None
+        self.queue = []
         self.history = []
 
         self.paused = True  # track is paused
@@ -775,19 +775,31 @@ class SerendipityPlayer:
         self.repeat = config.repeat
         self.shuffle = config.shuffle
 
+    def init_widget(self):
+        self.parent.time_slider.set_value(0)
+        self.parent.time_slider.setEnabled(False)
+
     @property
     def current_pos(self):
-        return mixer.music.get_pos()
+        return self.play_start + mixer.music.get_pos()
 
     def update_pos(self):
         if self.playing_track:
-            if mixer.music.get_pos() == -1:
+            if mixer.music.get_pos() == -1 and self.loaded and not self.paused:
                 self.next()
                 pd("Player: finished, next!")
                 return 0
             pos = mixer.music.get_pos() + self.play_start
-            self.widget.time_slider.set_value(int(pos / self.playing_track['duration']))
-            self.widget.label_current_time.setText(duration_to_string(pos // 1000))
+            self.parent.time_slider.set_value(int(pos / self.playing_track['duration']))
+            self.parent.label_current_time.setText(duration_to_string(pos // 1000))
+            return 1
+
+    def change_volume(self):
+        """
+        Change music volume and save it to config.
+        """
+        mixer.music.set_volume(self.parent.volume_slider.value() / 200)
+        config.volume = round(self.parent.volume_slider.value() / 100, 2)
 
     def download_finish_event(self, downloaded_track, task_type, folder):
         """
@@ -838,9 +850,11 @@ class SerendipityPlayer:
 
     def play_track(self, track: MusicTrack):
         cached_ids = set(get_saved_tracks(self.cache_path))
+        self.parent.time_slider.setEnabled(True)
         if track.id in cached_ids:
             mixer.music.stop()
             mixer.music.unload()
+            self.play_start = 0
             if track.file_path:
                 # track is downloaded
                 mixer.music.load(track.file_path)
@@ -849,6 +863,7 @@ class SerendipityPlayer:
                 try:
                     mixer.music.load(os.path.join(self.cache_path, f"{track.id}.mp3"))
                     pd("Player: playing", track)
+                    mixer.music.play()
                 except FileNotFoundError:
                     pd("Player: CRITICAL ERROR:", track, " is not cached for some reason")
                     return -1
@@ -859,16 +874,30 @@ class SerendipityPlayer:
         self.update_widget()
 
     def next(self):
+        print('queue: ', self.queue)
+        if not config.repeat:
+            try:
+                self.queue.remove(self.playing_track)
+            except AttributeError or ValueError:
+                pass
+
         if self.queue:
             self.queue_pos += 1
             if self.queue_pos >= len(self.queue):
-                self.queue_pos = 0
+                # if queue is shorter than caching size
+                if config.repeat:
+                    # start from queue beginning
+                    self.queue_pos = 0
+                else:
+                    # queue end
+                    self.queue_pos = -1
+                    self.queue = []
+                    return -1
 
             # clean "play" tasks from queue
             if len(download_queue) > 1:
                 while download_queue[1][1] == 'play':
                     download_queue.pop(1)
-
 
             # get cached ids
             cached_ids = set(get_saved_tracks(self.cache_path))
@@ -876,30 +905,78 @@ class SerendipityPlayer:
 
             self.playing_track = next_track
 
-            if next_track.file_path:
+            # adding tracks to cache
+            if len(self.queue) <= config.queue_cache:
+                # if queue is shorter than cache size
+                for elem in self.queue:
+                    if elem == self.playing_track:
+                        add_to_download_queue(elem, 'play', self.cache_path, True)
+                    else:
+                        add_to_download_queue(elem, 'cache', self.cache_path, False)
+            else:
+                current_pos = self.queue_pos
+                cached_count = 0
+                while cached_count < config.queue_cache:
+                    if current_pos >= len(self.queue):
+                        current_pos = 0
+                    cur_track = self.queue[current_pos]
+                    if cur_track == next_track:
+                        add_to_download_queue(cur_track, 'play', self.cache_path, True)
+                    else:
+                        add_to_download_queue(cur_track, 'cache', self.cache_path)
+
+                    cached_count += 1
+
+            if next_track.file_path or next_track.id in cached_ids:
                 self.loaded = True
                 self.play_track(next_track)
-            if next_track.id not in cached_ids:
+            elif next_track.id not in cached_ids:
                 # track isn't loaded
                 add_to_download_queue(next_track, 'play', self.cache_path, True)
                 self.paused = True
                 self.loaded = False
             self.update_widget()
 
+        else:
+            self.stop()
+
     def stop(self):
         mixer.music.stop()
         mixer.music.unload()
+
+        sig = None
+        if self.playing_track:
+            sig = self.playing_track.com.track_update
         self.playing_track = None
         self.loaded = False
+        self.paused = True
+        self.parent.label_current_time.setText("--:--")
+        self.parent.label_duration.setText("--:--")
+        self.parent.time_slider.set_value(0)
+        self.parent.time_slider.setEnabled(False)
+
+        if sig is not None:
+            sig.emit()
+
+    def set_repeat(self):
+        config.repeat = not config.repeat
+        self.repeat = config.repeat
+        self.update_widget()
+        # something should be here
+
+    def set_shuffle(self):
+        config.shuffle = not config.shuffle
+        self.shuffle = True
+        self.update_widget()
 
     def rewind(self, secs):
         if self.playing_track:
             mixer.music.stop()
-            mixer.music.play(0, (secs * self.playing_track['duration']) // 1000)
+            mixer.music.play(0, (secs.value() * self.playing_track['duration']) // 1000)
             if self.paused:
                 mixer.music.pause()
-            self.play_start = secs * self.playing_track['duration']
-            self.widget.update_pos()
+            self.play_start = secs.value() * self.playing_track['duration']
+            self.update_pos()
 
     def pause(self):
         if self.playing_track and self.loaded:
@@ -937,6 +1014,31 @@ class SerendipityPlayer:
         if self.playing_track:
             if self.playing_track.com:
                 self.playing_track.com.track_update.emit()
+
+        if self.playing_track:
+            self.parent.label_duration.setText(duration_to_string(self.playing_track['duration']))
+
+    def truncate(self, metrics):
+        # truncate player labels
+        labels = [self.parent.label_player_title, self.parent.label_player_artist]
+        if self.playing_track:
+            texts = [self.playing_track.get_param('title', 'Unnamed'),
+                     self.playing_track.get_param('artist', 'Unknown artist')]
+        else:
+            texts = ["No track", '-']
+        size = self.widget.width() // 5
+        if size <= 40:
+            # on create
+            size = 100
+
+        for i in range(2):
+            text = texts[i]
+            if metrics.width(text) > size:
+                while metrics.width(text + '...') > size:
+                    text = text[:-1]
+                labels[i].setText(text + '...')
+            else:
+                labels[i].setText(text)
 
 
 class PlaylistView(QWidget):
@@ -1174,6 +1276,7 @@ class MainWindow(QMainWindow):
         # temp
         self.debug_button1.clicked.connect(self.test)
         self.tab_widget.tabBar().setTabButton(0, QTabBar.RightSide, None)
+        self.player.init_widget()
 
     def test(self, some):
         self.label_current_time.hide()
@@ -1389,205 +1492,23 @@ class MainWindow(QMainWindow):
 
         self.player_button_play.clicked.connect(self.player.pause)
         self.player_button_next.clicked.connect(self.player.next)
-        self.player_button_shuffle.clicked.connect(self.player_shuffle)
-        self.player_button_repeat.clicked.connect(self.player_repeat)
+        self.player_button_shuffle.clicked.connect(self.player.set_shuffle)
+        self.player_button_repeat.clicked.connect(self.player.set_repeat)
 
         self.volume_slider.setMinimum(0)
         self.volume_slider.setMaximum(100)
         self.volume_slider.setValue(int(self.config['volume'] * 100))
-        self.change_volume()
+        self.player.change_volume()
         self.time_slider.setMaximum(1000)
-        # self.time_slider.release_func = self.player_rewind
-        self.volume_slider.valueChanged.connect(self.change_volume)
+        self.time_slider.release_func = self.player.rewind
+        self.volume_slider.valueChanged.connect(self.player.change_volume)
 
-        self.update_player()
         # self.play_next()
         self.truncate_all()
         self.label_player_title.setText("No Track")
 
         self.player.update_widget()
 
-    def update_player(self):
-        self.truncate_all()
-        # if self.config['shuffle']:
-        #     self.player_button_shuffle.setIcon(styles.get_icon("shuffle"))
-        # else:
-        #     self.player_button_shuffle.setIcon(styles.get_icon("no-shuffle"))
-#
-        # if self.playing:
-        #     self.player_button_play.setIcon(styles.get_icon("pause"))
-        # else:
-        #     self.player_button_play.setIcon(styles.get_icon("play"))
-#
-        # if self.config['repeat']:
-        #     self.player_button_repeat.setIcon(styles.get_icon("repeat"))
-        # else:
-        #     self.player_button_repeat.setIcon(styles.get_icon("no-repeat"))
-#
-        # if self.playing_track:
-        #     if self.playing_track.upd_func:
-        #         self.playing_track.upd_func()
-
-    def player_pause(self):
-        if self.playing_track:
-            if self.playing:
-                self.playing = False
-                mixer.music.pause()
-            else:
-                self.playing = True
-                mixer.music.unpause()
-            self.update_player()
-
-    def player_repeat(self):
-        config.repeat = not config.repeat
-        self.update_player()
-        self.save_config()
-
-    def player_shuffle(self):
-        config.shuffle = not config.shuffle
-        self.update_player()
-        self.save_config()
-
-    def player_rewind(self, slider):
-        if self.playing_track:
-            mixer.music.stop()
-            mixer.music.play(0, (slider.value() * self.playing_track['duration']) // 1000)
-            if not self.playing:
-                mixer.music.pause()
-            self.play_start = slider.value() * self.playing_track['duration']
-            self.update_pos()
-
-    def change_volume(self):
-        """
-        Change music volume and save it to config.
-        """
-        mixer.music.set_volume(self.volume_slider.value() / 200)
-        self.config['volume'] = round(self.volume_slider.value() / 100, 2)
-        self.save_config()
-
-    def set_player_queue(self, playable):
-        """
-        Resets player queue and adds new objects.
-        """
-        # reset buttons
-        f = None
-        if self.playing_track:
-            if self.playing_track.upd_func:
-                f = self.playing_track.upd_func
-        self.playing_track = None
-        self.playing = False
-        if f:
-            f()
-
-        mixer.music.stop()
-        mixer.music.unload()
-
-        self.update_player()
-        print(type(playable))
-        if isinstance(playable, MusicTrack):
-            pd('Queue_manager: Adding:', playable, 'to queue')
-            self.play_queue = [playable]
-        elif isinstance(playable, Playlist):
-            pd('Queue_manager: Adding:', playable.name, len(playable.tracks), 'to queue')
-            self.play_queue = playable.tracks.copy()
-        else:
-            pd("Queue_manager: ERROR incorrect input")
-            return -1
-        self.queue_pos = -1
-
-        # get currently cached tracks
-        cached_ids = set(get_saved_tracks(os.path.join(self.config['storage'], 'cache')))
-
-        print(self.play_queue)
-        new_ids = [i.id for i in self.play_queue]
-        for cached in tuple(cached_ids):
-            if cached not in new_ids or cached < 1:
-                cached_ids.remove(cached)
-                pd('Cache_handler: removing', cached, 'from cache.')
-                try:
-                    os.remove(os.path.join(self.config['storage'], 'cache', str(cached) + ".mp3"))
-                except FileNotFoundError:
-                    pd("Cache_handler: file not found?.. ok skip")
-                    pass
-        self.play_next()
-
-    def play_next(self):
-        global download_queue
-        update_function = None
-        if self.playing_track:
-            if self.playing_track.upd_func:
-                update_function = self.playing_track.upd_func
-
-        mixer.music.stop()
-        mixer.music.unload()
-        self.time_slider.setEnabled(False)
-        self.playing_track = None
-        self.playing = False
-
-        if not self.play_queue:
-            pd("Queue_manager: queue end")
-            self.label_current_time.setText("--:--")
-            self.label_duration.setText("--:--")
-            self.time_slider.setValue(0)
-            self.label_player_title.setText("No track")
-            self.label_player_artist.setText('')
-            self.update_player()
-            if update_function:
-                print("update_function")
-                update_function()
-            return 0
-        else:
-            pd('Queue_manager: next track')
-            if self.config['repeat']:
-                if self.queue_pos == len(self.play_queue) - 1:
-                    # repeat on, return to begin
-                    self.queue_pos = 0
-                else:
-                    # repeat on, next
-                    self.queue_pos += 1
-                cur_track = self.play_queue[self.queue_pos]
-            else:
-                # repeat off, pop first track
-                if self.playing:
-                    # if not new track
-                    self.play_queue.pop(0)
-                if not self.play_queue:
-                    # if queue became empty
-                    self.play_next()
-                    return 0
-                cur_track = self.play_queue[0]
-                self.queue_pos = 0
-
-            pd("Queue_manager: next track is", cur_track)
-            # get currently cached tracks
-            cached_ids = set(get_saved_tracks(os.path.join(self.config['storage'], 'cache')))
-            if cur_track.file_path or cur_track.id in cached_ids:
-                # if ready to play
-                self.play_track(cur_track)
-                self.awaiting_download = False
-
-            # caching
-            for i in range(self.queue_pos, min(len(self.play_queue), 1 + self.config["queue_cache"] + self.queue_pos)):
-                cached_ids = set(get_saved_tracks(os.path.join(self.config['storage'], 'cache')))
-                elem = self.play_queue[i]  # get track
-                if not elem.file_path:
-                    # if file is not stored
-                    if elem.id not in cached_ids:
-                        # if not cached yet
-                        if elem not in [task[0] for task in download_queue]:
-                            # if not awaiting download
-                            if i != self.queue_pos:
-                                add_to_download_queue(elem, 'cache', os.path.join(self.config['storage'], 'cache'))
-                            else:
-                                # add play task for current track if it needs to be downloaded
-                                self.awaiting_download = True
-                                add_to_download_queue(elem, 'play', os.path.join(self.config['storage'], 'cache'), True)
-                                self.next_download_message(True)
-                                self.label_player_title.setText("Downloading...")
-                                self.label_player_artist.setText('')
-            self.truncate_all()
-            if update_function:
-                update_function()
 
     # Playlists
 
@@ -1727,32 +1648,6 @@ class MainWindow(QMainWindow):
     def debug(self, *args, **kwargs):
         print('debug')
 
-    def player_truncate(self, metrics):
-        # truncate player labels
-        return 0
-        labels = [self.label_player_title, self.label_player_artist]
-        if self.player.playing_track:
-            texts = [self.playing_track.get_param('title', 'Unnamed'),
-                     self.playing_track.get_param('artist', 'Unknown artist')]
-        else:
-            if not self.player.loaded:
-                texts = ["Loading...", "-"]
-            else:
-                texts = ["No track", '-']
-        size = self.player_widget.width() // 5
-        if size <= 40:
-            # on create
-            size = 100
-
-        for i in range(2):
-            text = texts[i]
-            if metrics.width(text) > size:
-                while metrics.width(text + '...') > size:
-                    text = text[:-1]
-                labels[i].setText(text + '...')
-            else:
-                labels[i].setText(text)
-
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         # if self.width() != self.window_width:
         # custom resize event
@@ -1767,7 +1662,7 @@ class MainWindow(QMainWindow):
         global pl_width
 
         metrics = QFontMetrics(self.label_player_title.font())
-        self.player_truncate(metrics)
+        self.player.truncate(metrics)
         # width changed
         # truncate result text
         if self.current_results:
